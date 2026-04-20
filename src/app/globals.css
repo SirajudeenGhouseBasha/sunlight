@@ -7,16 +7,16 @@
    Clean, modern, and purposeful design with maximum impact
 ═══════════════════════════════════════════════════════════════════════════ */
 
-/* Import modern fonts */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+/* Import modern fonts - System font stack for performance */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-    /* Typography System */
-    --font-heading: 'Inter', system-ui, sans-serif;
-    --font-sans: 'Inter', system-ui, sans-serif;
-    --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+    /* Typography System - BeMinimalist inspired */
+    --font-heading: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+    --font-mono: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace;
     
     /* Minimalist Color Tokens */
     --color-pure-white: #ffffff;
@@ -117,107 +117,107 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   LIGHT THEME - Clean and bright
+   LIGHT THEME - 60-30-10 Rule: White (60%), Black (30%), Orange (10%)
 ═══════════════════════════════════════════════════════════════════════════ */
 :root {
-    /* Core colors */
+    /* Core colors - 60% White */
     --background: var(--color-pure-white);
-    --foreground: var(--color-neutral-900);
+    --foreground: var(--color-pure-black);
     
-    /* Surface colors */
+    /* Surface colors - 60% White */
     --card: var(--color-pure-white);
-    --card-foreground: var(--color-neutral-900);
+    --card-foreground: var(--color-pure-black);
     --popover: var(--color-pure-white);
-    --popover-foreground: var(--color-neutral-900);
+    --popover-foreground: var(--color-pure-black);
     
-    /* Interactive colors */
-    --primary: var(--color-neutral-900);
+    /* Interactive colors - 10% Orange accent */
+    --primary: var(--color-accent-orange);
     --primary-foreground: var(--color-pure-white);
     --secondary: var(--color-neutral-100);
-    --secondary-foreground: var(--color-neutral-900);
+    --secondary-foreground: var(--color-pure-black);
     
-    /* Muted colors */
-    --muted: var(--color-neutral-100);
-    --muted-foreground: var(--color-neutral-500);
+    /* Muted colors - 60% White variations */
+    --muted: var(--color-neutral-50);
+    --muted-foreground: var(--color-neutral-600);
     
-    /* Accent colors */
-    --accent: var(--color-neutral-100);
-    --accent-foreground: var(--color-neutral-900);
+    /* Accent colors - 10% Orange */
+    --accent: var(--color-accent-orange);
+    --accent-foreground: var(--color-pure-white);
     
     /* System colors */
     --destructive: var(--color-accent-red);
     --border: var(--color-neutral-200);
     --input: var(--color-neutral-200);
-    --ring: var(--color-neutral-900);
+    --ring: var(--color-accent-orange);
     
     /* Chart colors */
-    --chart-1: var(--color-accent-blue);
-    --chart-2: var(--color-accent-green);
-    --chart-3: var(--color-accent-orange);
-    --chart-4: var(--color-accent-purple);
+    --chart-1: var(--color-accent-orange);
+    --chart-2: var(--color-pure-black);
+    --chart-3: var(--color-neutral-600);
+    --chart-4: var(--color-neutral-400);
     --chart-5: var(--color-accent-red);
     
-    /* Sidebar colors */
-    --sidebar: var(--color-neutral-50);
-    --sidebar-foreground: var(--color-neutral-900);
-    --sidebar-primary: var(--color-neutral-900);
+    /* Sidebar colors - 30% Black */
+    --sidebar: var(--color-pure-black);
+    --sidebar-foreground: var(--color-pure-white);
+    --sidebar-primary: var(--color-accent-orange);
     --sidebar-primary-foreground: var(--color-pure-white);
-    --sidebar-accent: var(--color-neutral-100);
-    --sidebar-accent-foreground: var(--color-neutral-900);
-    --sidebar-border: var(--color-neutral-200);
-    --sidebar-ring: var(--color-neutral-900);
+    --sidebar-accent: var(--color-neutral-800);
+    --sidebar-accent-foreground: var(--color-pure-white);
+    --sidebar-border: var(--color-neutral-800);
+    --sidebar-ring: var(--color-accent-orange);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   DARK THEME - Deep and sophisticated
+   DARK THEME - 60-30-10 Rule: Black (60%), White (30%), Orange (10%)
 ═══════════════════════════════════════════════════════════════════════════ */
 .dark {
-    /* Core colors */
+    /* Core colors - 60% Black */
     --background: var(--color-pure-black);
     --foreground: var(--color-pure-white);
     
-    /* Surface colors */
+    /* Surface colors - 60% Black */
     --card: var(--color-neutral-900);
     --card-foreground: var(--color-pure-white);
     --popover: var(--color-neutral-900);
     --popover-foreground: var(--color-pure-white);
     
-    /* Interactive colors */
-    --primary: var(--color-pure-white);
-    --primary-foreground: var(--color-pure-black);
+    /* Interactive colors - 10% Orange accent */
+    --primary: var(--color-accent-orange);
+    --primary-foreground: var(--color-pure-white);
     --secondary: var(--color-neutral-800);
     --secondary-foreground: var(--color-pure-white);
     
-    /* Muted colors */
-    --muted: var(--color-neutral-800);
+    /* Muted colors - 60% Black variations */
+    --muted: var(--color-neutral-900);
     --muted-foreground: var(--color-neutral-400);
     
-    /* Accent colors */
-    --accent: var(--color-neutral-800);
+    /* Accent colors - 10% Orange */
+    --accent: var(--color-accent-orange);
     --accent-foreground: var(--color-pure-white);
     
     /* System colors */
     --destructive: var(--color-accent-red);
     --border: var(--color-neutral-800);
     --input: var(--color-neutral-800);
-    --ring: var(--color-pure-white);
+    --ring: var(--color-accent-orange);
     
     /* Chart colors */
-    --chart-1: var(--color-accent-blue);
-    --chart-2: var(--color-accent-green);
-    --chart-3: var(--color-accent-orange);
-    --chart-4: var(--color-accent-purple);
+    --chart-1: var(--color-accent-orange);
+    --chart-2: var(--color-pure-white);
+    --chart-3: var(--color-neutral-400);
+    --chart-4: var(--color-neutral-600);
     --chart-5: var(--color-accent-red);
     
-    /* Sidebar colors */
-    --sidebar: var(--color-neutral-900);
-    --sidebar-foreground: var(--color-pure-white);
-    --sidebar-primary: var(--color-pure-white);
-    --sidebar-primary-foreground: var(--color-pure-black);
-    --sidebar-accent: var(--color-neutral-800);
-    --sidebar-accent-foreground: var(--color-pure-white);
-    --sidebar-border: var(--color-neutral-800);
-    --sidebar-ring: var(--color-pure-white);
+    /* Sidebar colors - 30% White */
+    --sidebar: var(--color-pure-white);
+    --sidebar-foreground: var(--color-pure-black);
+    --sidebar-primary: var(--color-accent-orange);
+    --sidebar-primary-foreground: var(--color-pure-white);
+    --sidebar-accent: var(--color-neutral-100);
+    --sidebar-accent-foreground: var(--color-pure-black);
+    --sidebar-border: var(--color-neutral-200);
+    --sidebar-ring: var(--color-accent-orange);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -242,6 +242,7 @@
         text-rendering: optimizeLegibility;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
+        font-size: 16px; /* Base font size */
     }
     
     body {
@@ -250,26 +251,64 @@
         line-height: 1.6;
         margin: 0;
         min-height: 100vh;
+        font-size: 0.875rem; /* 14px - BeMinimalist body text */
+        font-weight: 400;
     }
     
-    /* Typography Scale */
+    /* Typography Scale - BeMinimalist style */
     h1, h2, h3, h4, h5, h6 {
         @apply font-heading;
-        font-weight: 600;
+        font-weight: 700;
         line-height: 1.2;
-        letter-spacing: -0.025em;
+        letter-spacing: -0.02em;
         margin: 0;
     }
     
-    h1 { font-size: 2.5rem; }      /* 40px */
-    h2 { font-size: 2rem; }        /* 32px */
-    h3 { font-size: 1.5rem; }      /* 24px */
-    h4 { font-size: 1.25rem; }     /* 20px */
-    h5 { font-size: 1.125rem; }    /* 18px */
-    h6 { font-size: 1rem; }        /* 16px */
+    h1 { 
+        font-size: 2rem;          /* 32px */
+        font-weight: 700;
+    }
+    h2 { 
+        font-size: 1.5rem;        /* 24px */
+        font-weight: 700;
+    }
+    h3 { 
+        font-size: 1.25rem;       /* 20px */
+        font-weight: 600;
+    }
+    h4 { 
+        font-size: 1.125rem;      /* 18px */
+        font-weight: 600;
+    }
+    h5 { 
+        font-size: 1rem;          /* 16px */
+        font-weight: 600;
+    }
+    h6 { 
+        font-size: 0.875rem;      /* 14px */
+        font-weight: 600;
+    }
     
     p {
         margin: 0;
+        line-height: 1.6;
+        font-size: 0.875rem;      /* 14px - BeMinimalist body text */
+        font-weight: 400;
+    }
+    
+    /* Body text sizes */
+    .text-body {
+        font-size: 0.875rem;      /* 14px */
+        line-height: 1.6;
+    }
+    
+    .text-small {
+        font-size: 0.75rem;       /* 12px */
+        line-height: 1.5;
+    }
+    
+    .text-large {
+        font-size: 1rem;          /* 16px */
         line-height: 1.6;
     }
     
@@ -438,12 +477,25 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   RESPONSIVE DESIGN - Mobile-first approach
+   RESPONSIVE DESIGN - Mobile-first approach (BeMinimalist style)
 ═══════════════════════════════════════════════════════════════════════════ */
 @media (max-width: 640px) {
-    h1 { font-size: 2rem; }        /* 32px on mobile */
-    h2 { font-size: 1.75rem; }     /* 28px on mobile */
-    h3 { font-size: 1.25rem; }     /* 20px on mobile */
+    h1 { 
+        font-size: 1.75rem;       /* 28px on mobile */
+        font-weight: 700;
+    }
+    h2 { 
+        font-size: 1.375rem;      /* 22px on mobile */
+        font-weight: 700;
+    }
+    h3 { 
+        font-size: 1.125rem;      /* 18px on mobile */
+        font-weight: 600;
+    }
+    
+    p, .text-body {
+        font-size: 0.875rem;      /* 14px stays same on mobile */
+    }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
