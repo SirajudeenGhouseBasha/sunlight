@@ -1,470 +1,324 @@
-'use client'
+/**
+ * Signup Page Component
+ * 
+ * Provides user registration interface with email/password and OAuth
+ * Requirements: 3.2, 3.3 - User authentication and registration
+ */
 
-import { useActionState, useState, useEffect, Suspense } from 'react'
-import { useFormStatus } from 'react-dom'
-import { useSearchParams } from 'next/navigation'
-import Link from 'next/link'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Loader2, Eye, EyeOff, Sun, UserPlus } from 'lucide-react'
-import { Button } from '@/src/components/ui/button'
-import { Input } from '@/src/components/ui/input'
-import { Label } from '@/src/components/ui/label'
-import { AuthModal } from '@/src/components/auth/auth-modal'
-import { VerifyEmailModal } from '@/src/components/auth/verify-email-modal'
-import { signUpAction } from '@/src/actions/auth/signup'
-import {
-  validateEmail,
-  validatePasswordLength,
-  validatePasswordsMatch,
-} from '@/src/lib/auth/validation'
+'use client';
 
-/* ─── Animation variants - Using minimalist design system ─────────────────── */
-const ease = [0.16, 1, 0.3, 1] as const
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
+import { useAuth } from '@/src/hooks/useAuth';
+import { validateEmail, validatePassword, getPasswordStrength } from '@/src/lib/auth/utils';
+import { Button } from '@/src/components/ui/button';
+import { Input } from '@/src/components/ui/input';
+import { Label } from '@/src/components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/src/components/ui/card';
+import { Separator } from '@/src/components/ui/separator';
 
-const slideInRight = {
-  hidden: { opacity: 0, x: 30 },
-  visible: { 
-    opacity: 1, 
-    x: 0,
-    transition: { duration: 0.35, ease, delay: 0.1 }
-  },
-}
-
-const slideInUp = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { 
-    opacity: 1, 
-    y: 0,
-    transition: { duration: 0.35, ease, delay: 0.15 }
-  },
-}
-
-const stagger = {
-  hidden: {},
-  visible: { 
-    transition: { 
-      staggerChildren: 0.06,
-      delayChildren: 0.1 
-    } 
-  },
-}
-
-const fadeUp = {
-  hidden: { opacity: 0, y: 16 },
-  visible: { 
-    opacity: 1, 
-    y: 0, 
-    transition: { duration: 0.25, ease } 
-  },
-}
-
-
-
-/* ─── Submit button - Minimalist design ────────────────────────────────────── */
-function SubmitButton() {
-  const { pending } = useFormStatus()
-  return (
-    <Button
-      type="submit"
-      disabled={pending}
-      className="
-        w-full h-12 text-sm font-medium
-        bg-foreground hover:bg-foreground/90
-        text-background
-        rounded-lg
-        transition-all duration-150
-        disabled:opacity-50 disabled:cursor-not-allowed
-        focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2
-        active:scale-[0.98]
-        border-0
-        shadow-sm
-      "
-    >
-      {pending ? (
-        <span className="flex items-center gap-2">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Creating account...
-        </span>
-      ) : (
-        <span className="flex items-center gap-2">
-          <UserPlus className="h-4 w-4" />
-          Create account
-        </span>
-      )}
-    </Button>
-  )
-}
-
-/* ─── OAuth Button Component - Clean and minimal ───────────────────────────── */
-function CustomOAuthButton({ 
-  icon: Icon, 
-  children 
-}: { 
-  icon: React.ComponentType<{ className?: string }>
-  children: React.ReactNode 
-}) {
-  return (
-    <button
-      type="button"
-      className="
-        w-full h-12 
-        bg-card hover:bg-muted/50
-        text-card-foreground 
-        rounded-lg
-        border border-border
-        transition-all duration-150
-        focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2
-        active:scale-[0.98]
-        flex items-center justify-center gap-3
-        font-medium text-sm
-        shadow-sm
-      "
-    >
-      <Icon className="w-5 h-5" />
-      {children}
-    </button>
-  )
-}
-
-/* ─── Main component - Minimalist signup page ──────────────────────────────── */
-function SignUpPageContent() {
-  const [state, action] = useActionState(signUpAction, null)
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const [activeModal, setActiveModal] = useState<string | null>(null)
+export default function SignupPage() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordStrength, setPasswordStrength] = useState({ score: 0, feedback: [] as string[] });
   
-  const searchParams = useSearchParams()
+  const { signUp, signInWithOAuth, isAuthenticated, error, clearError } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   
-  // Handle URL-based modal opening
+  const redirectTo = searchParams.get('redirectTo') || '/dashboard';
+
+  // Redirect if already authenticated
   useEffect(() => {
-    const modal = searchParams.get('modal')
-    if (modal === 'verify-email') {
-      setActiveModal(modal)
+    if (isAuthenticated) {
+      router.push(redirectTo);
     }
-  }, [searchParams])
+  }, [isAuthenticated, router, redirectTo]);
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    const data = new FormData(e.currentTarget)
-    const errors: Record<string, string> = {}
-
-    const emailResult = validateEmail(data.get('email') as string)
-    if (!emailResult.ok) errors.email = emailResult.message
-
-    const passwordResult = validatePasswordLength(data.get('password') as string)
-    if (!passwordResult.ok) errors.password = passwordResult.message
-
-    const matchResult = validatePasswordsMatch(
-      data.get('password') as string, 
-      data.get('confirmPassword') as string
-    )
-    if (!matchResult.ok) errors.confirmPassword = matchResult.message
-
-    if (Object.keys(errors).length > 0) {
-      e.preventDefault()
-      setFieldErrors(errors)
-      return
+  // Update password strength
+  useEffect(() => {
+    if (password) {
+      setPasswordStrength(getPasswordStrength(password));
+    } else {
+      setPasswordStrength({ score: 0, feedback: [] });
     }
-    setFieldErrors({})
-  }
+  }, [password]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!validateEmail(email)) {
+      return;
+    }
+    
+    if (!validatePassword(password)) {
+      return;
+    }
+    
+    if (password !== confirmPassword) {
+      return;
+    }
+
+    setIsLoading(true);
+    clearError();
+    
+    const { error: signUpError } = await signUp(email, password, fullName);
+    
+    if (!signUpError) {
+      // Redirect to email verification page
+      router.push('/auth/verify-email');
+    } else {
+      setIsLoading(false);
+    }
+  };
+
+  const handleOAuthSignIn = async (provider: 'google' | 'apple') => {
+    clearError();
+    await signInWithOAuth(provider);
+  };
+
+  const getPasswordStrengthColor = (score: number) => {
+    if (score < 2) return 'bg-red-500';
+    if (score < 4) return 'bg-yellow-500';
+    return 'bg-green-500';
+  };
+
+  const getPasswordStrengthText = (score: number) => {
+    if (score < 2) return 'Weak';
+    if (score < 4) return 'Medium';
+    return 'Strong';
+  };
 
   return (
-    <>
-      <div className="min-h-screen flex flex-col lg:flex-row font-sans">
-      {/* ══════════════════════════════════════════════════════════════════
-          Left Side - Clean minimal branding (Mobile: 30% height, Desktop: 50% width)
-      ══════════════════════════════════════════════════════════════════ */}
-      <motion.div 
-        className="h-[30vh] lg:h-screen lg:w-1/2 relative overflow-hidden bg-foreground"
-        variants={slideInUp}
-        initial="hidden"
-        animate="visible"
-      >
-        {/* Simple gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-br from-foreground via-foreground to-foreground/90" />
+    <div className="min-h-screen bg-gray-50 px-4 py-6 sm:px-6 lg:px-8">
+      <div className="flex flex-col justify-center min-h-full">
+        <Card className="w-full max-w-sm mx-auto">
+        <CardHeader className="space-y-1 text-center">
+          <CardTitle className="text-2xl font-bold">Create account</CardTitle>
+          <CardDescription>
+            Enter your information to get started
+          </CardDescription>
+        </CardHeader>
         
-        {/* Content overlay */}
-        <div className="absolute inset-0 flex items-center justify-center">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5, delay: 0.4 }}
-            className="text-center text-background"
-          >
-            {/* Logo */}
-            <div className="w-16 h-16 bg-background/20 backdrop-blur-sm rounded-2xl flex items-center justify-center mx-auto mb-6 border border-background/30">
-              <Sun className="w-8 h-8 text-background" />
+        <CardContent className="space-y-4 px-4">
+          {/* Display errors */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-md text-sm">
+              {error}
             </div>
-            
-            <h2 className="text-3xl lg:text-4xl font-semibold mb-3">
-              Start your journey
-            </h2>
-            <p className="text-background/80 text-lg max-w-md leading-relaxed">
-              Join thousands of users who trust Sunlight
-            </p>
-          </motion.div>
-        </div>
+          )}
 
-        {/* Mobile logo (top-left) */}
-        <div className="lg:hidden absolute top-6 left-6 flex items-center gap-3">
-          <div className="w-8 h-8 bg-background/20 backdrop-blur-sm rounded-lg flex items-center justify-center border border-background/30">
-            <Sun className="w-4 h-4 text-background" />
-          </div>
-          <span className="text-background font-semibold text-lg">Sunlight</span>
-        </div>
-      </motion.div>
-
-      {/* ══════════════════════════════════════════════════════════════════
-          Signup Form Section - Mobile: 70% height, Desktop: 50% width
-      ══════════════════════════════════════════════════════════════════ */}
-      <motion.div 
-        className="flex-1 lg:w-1/2 bg-background flex items-center justify-center p-6 lg:p-12"
-        variants={slideInRight}
-        initial="hidden"
-        animate="visible"
-      >
-        <motion.div
-          className="w-full max-w-sm"
-          variants={stagger}
-          initial="hidden"
-          animate="visible"
-        >
-          {/* Header */}
-          <motion.div variants={fadeUp} className="text-center mb-8">
-            <h1 className="text-2xl lg:text-3xl font-semibold text-foreground mb-3">
-              Create account
-            </h1>
-            <p className="text-muted-foreground text-sm lg:text-base">
-              Sign up to get started with Sunlight
-            </p>
-          </motion.div>
-
-          {/* Google OAuth Button */}
-          <motion.div variants={fadeUp} className="mb-6">
-            <CustomOAuthButton icon={Sun}>
+          {/* OAuth Buttons - Mobile Optimized */}
+          <div className="space-y-3">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full h-12 text-base"
+              onClick={() => handleOAuthSignIn('google')}
+            >
+              <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
+                <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+              </svg>
               Continue with Google
-            </CustomOAuthButton>
-          </motion.div>
+            </Button>
+            
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full h-12 text-base"
+              onClick={() => handleOAuthSignIn('apple')}
+            >
+              <svg className="w-5 h-5 mr-3" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+              </svg>
+              Continue with Apple
+            </Button>
+          </div>
 
-          {/* Divider */}
-          <motion.div variants={fadeUp} className="flex items-center gap-4 mb-6">
-            <div className="flex-1 h-px bg-border" />
-            <span className="text-muted-foreground text-sm font-medium">or</span>
-            <div className="flex-1 h-px bg-border" />
-          </motion.div>
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <Separator className="w-full" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-white px-2 text-gray-500">Or continue with</span>
+            </div>
+          </div>
 
-          {/* Email Form */}
-          <form action={action} onSubmit={handleSubmit} noValidate className="space-y-5">
-            {/* Email */}
-            <motion.div variants={fadeUp} className="space-y-2">
-              <Label htmlFor="email" className="text-sm font-medium text-foreground">
-                Email
-              </Label>
+          {/* Email/Password Form */}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="fullName">Full Name</Label>
+              <Input
+                id="fullName"
+                type="text"
+                placeholder="Enter your full name"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                disabled={isLoading}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
-                name="email"
                 type="email"
                 placeholder="Enter your email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 required
-                autoComplete="email"
-                aria-describedby={fieldErrors.email ? 'email-error' : undefined}
-                aria-invalid={!!fieldErrors.email}
-                className={`
-                  h-12 bg-card border-border text-card-foreground placeholder:text-muted-foreground
-                  focus-visible:ring-2 focus-visible:ring-ring focus-visible:border-ring
-                  rounded-lg transition-all duration-150
-                  ${fieldErrors.email ? 'border-red-500 focus-visible:ring-red-500' : ''}
-                `}
+                disabled={isLoading}
               />
-              <AnimatePresence>
-                {fieldErrors.email && (
-                  <motion.p
-                    id="email-error"
-                    role="alert"
-                    className="text-sm text-red-500"
-                    initial={{ opacity: 0, y: -4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -4 }}
-                    transition={{ duration: 0.15 }}
-                  >
-                    {fieldErrors.email}
-                  </motion.p>
-                )}
-              </AnimatePresence>
-            </motion.div>
-
-            {/* Password */}
-            <motion.div variants={fadeUp} className="space-y-2">
-              <Label htmlFor="password" className="text-sm font-medium text-foreground">
-                Password
-              </Label>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
               <div className="relative">
                 <Input
                   id="password"
-                  name="password"
                   type={showPassword ? 'text' : 'password'}
-                  placeholder="Min. 8 characters"
+                  placeholder="Create a password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   required
-                  autoComplete="new-password"
-                  aria-describedby={fieldErrors.password ? 'password-error' : undefined}
-                  aria-invalid={!!fieldErrors.password}
-                  className={`
-                    h-12 pr-12 bg-card border-border text-card-foreground placeholder:text-muted-foreground
-                    focus-visible:ring-2 focus-visible:ring-ring focus-visible:border-ring
-                    rounded-lg transition-all duration-150
-                    ${fieldErrors.password ? 'border-red-500 focus-visible:ring-red-500' : ''}
-                  `}
+                  disabled={isLoading}
                 />
                 <button
                   type="button"
-                  onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  onClick={() => setShowPassword(!showPassword)}
                 >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showPassword ? (
+                    <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
+                    </svg>
+                  ) : (
+                    <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                  )}
                 </button>
               </div>
-              <AnimatePresence>
-                {fieldErrors.password && (
-                  <motion.p
-                    id="password-error"
-                    role="alert"
-                    className="text-sm text-red-500"
-                    initial={{ opacity: 0, y: -4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -4 }}
-                    transition={{ duration: 0.15 }}
-                  >
-                    {fieldErrors.password}
-                  </motion.p>
-                )}
-              </AnimatePresence>
-            </motion.div>
+              
+              {/* Password Strength Indicator */}
+              {password && (
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <div className="flex-1 bg-gray-200 rounded-full h-2">
+                      <div
+                        className={`h-2 rounded-full transition-all duration-300 ${getPasswordStrengthColor(passwordStrength.score)}`}
+                        style={{ width: `${(passwordStrength.score / 5) * 100}%` }}
+                      />
+                    </div>
+                    <span className="text-xs text-gray-600">
+                      {getPasswordStrengthText(passwordStrength.score)}
+                    </span>
+                  </div>
+                  
+                  {passwordStrength.feedback.length > 0 && (
+                    <ul className="text-xs text-gray-600 space-y-1">
+                      {passwordStrength.feedback.map((item, index) => (
+                        <li key={index} className="flex items-center space-x-1">
+                          <span className="text-red-500">•</span>
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </div>
 
-            {/* Confirm Password */}
-            <motion.div variants={fadeUp} className="space-y-2">
-              <Label htmlFor="confirmPassword" className="text-sm font-medium text-foreground">
-                Confirm password
-              </Label>
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirm Password</Label>
               <div className="relative">
                 <Input
                   id="confirmPassword"
-                  name="confirmPassword"
                   type={showConfirmPassword ? 'text' : 'password'}
-                  placeholder="Repeat your password"
+                  placeholder="Confirm your password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
                   required
-                  autoComplete="new-password"
-                  aria-describedby={fieldErrors.confirmPassword ? 'confirm-password-error' : undefined}
-                  aria-invalid={!!fieldErrors.confirmPassword}
-                  className={`
-                    h-12 pr-12 bg-card border-border text-card-foreground placeholder:text-muted-foreground
-                    focus-visible:ring-2 focus-visible:ring-ring focus-visible:border-ring
-                    rounded-lg transition-all duration-150
-                    ${fieldErrors.confirmPassword ? 'border-red-500 focus-visible:ring-red-500' : ''}
-                  `}
+                  disabled={isLoading}
                 />
                 <button
                   type="button"
-                  onClick={() => setShowConfirmPassword((v) => !v)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                  aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                 >
-                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showConfirmPassword ? (
+                    <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
+                    </svg>
+                  ) : (
+                    <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                  )}
                 </button>
               </div>
-              <AnimatePresence>
-                {fieldErrors.confirmPassword && (
-                  <motion.p
-                    id="confirm-password-error"
-                    role="alert"
-                    className="text-sm text-red-500"
-                    initial={{ opacity: 0, y: -4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -4 }}
-                    transition={{ duration: 0.15 }}
-                  >
-                    {fieldErrors.confirmPassword}
-                  </motion.p>
-                )}
-              </AnimatePresence>
-            </motion.div>
-
-            {/* Server error */}
-            <AnimatePresence>
-              {state?.message && (
-                <motion.div
-                  role="alert"
-                  className="rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 px-4 py-3"
-                  initial={{ opacity: 0, scale: 0.98 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.98 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <p className="text-sm text-red-600 dark:text-red-400 text-center">
-                    {state.message}
-                  </p>
-                </motion.div>
+              
+              {/* Password Match Indicator */}
+              {confirmPassword && (
+                <div className="text-xs">
+                  {password === confirmPassword ? (
+                    <span className="text-green-600 flex items-center">
+                      <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                      Passwords match
+                    </span>
+                  ) : (
+                    <span className="text-red-600 flex items-center">
+                      <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                      </svg>
+                      Passwords don't match
+                    </span>
+                  )}
+                </div>
               )}
-            </AnimatePresence>
+            </div>
 
-            {/* Submit */}
-            <motion.div variants={fadeUp} className="pt-2">
-              <SubmitButton />
-            </motion.div>
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={
+                isLoading || 
+                !email || 
+                !password || 
+                !confirmPassword || 
+                password !== confirmPassword ||
+                passwordStrength.score < 3
+              }
+            >
+              {isLoading ? 'Creating account...' : 'Create account'}
+            </Button>
           </form>
 
-          {/* Sign in link */}
-          <motion.div variants={fadeUp} className="mt-8 text-center">
-            <p className="text-sm text-muted-foreground">
-              Already have an account?{' '}
-              <Link 
-                href="/auth/login" 
-                className="text-foreground font-medium hover:underline transition-colors underline-offset-4"
-              >
-                Sign in
-              </Link>
-            </p>
-          </motion.div>
-
-          {/* Terms */}
-          <motion.div variants={fadeUp} className="mt-6 text-center">
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              By creating an account, you agree to our{' '}
-              <Link 
-                href="#" 
-                className="text-foreground hover:underline transition-colors underline-offset-4"
-              >
-                Terms of Service
-              </Link>{' '}
-              and{' '}
-              <Link 
-                href="#" 
-                className="text-foreground hover:underline transition-colors underline-offset-4"
-              >
-                Privacy Policy
-              </Link>
-              .
-            </p>
-          </motion.div>
-        </motion.div>
-      </motion.div>
+          <div className="text-center text-sm">
+            <span className="text-gray-600">Already have an account? </span>
+            <Link
+              href={`/auth/login${redirectTo !== '/dashboard' ? `?redirectTo=${encodeURIComponent(redirectTo)}` : ''}`}
+              className="text-blue-600 hover:text-blue-500 font-medium"
+            >
+              Sign in
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
       </div>
-
-      {/* Verify Email Modal */}
-      <AuthModal 
-        isOpen={activeModal === 'verify-email'} 
-        onClose={() => setActiveModal(null)}
-      >
-        <VerifyEmailModal onClose={() => setActiveModal(null)} />
-      </AuthModal>
-    </>
-  )
-}
-
-export default function SignUpPage() {
-  return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <SignUpPageContent />
-    </Suspense>
-  )
+    </div>
+  );
 }
