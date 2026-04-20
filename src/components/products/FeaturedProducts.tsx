@@ -23,6 +23,8 @@ interface FeaturedProduct {
   color_hex?: string;
   price: number;
   in_stock: boolean;
+  image_url?: string;
+  additional_images?: string[];
 }
 
 interface FeaturedProductsProps {
@@ -88,16 +90,26 @@ export function FeaturedProducts({
         {products.map((product) => (
           <Card key={product.id} className="overflow-hidden hover:shadow-lg transition-shadow">
             <Link href={`/products/${product.variant_id}`}>
-              <div className="aspect-square bg-gradient-to-br from-gray-100 to-gray-200 relative">
-                {product.color_hex && (
-                  <div
-                    className="absolute inset-0 opacity-20"
-                    style={{ backgroundColor: product.color_hex }}
+              <div className="aspect-square bg-gradient-to-br from-gray-100 to-gray-200 relative overflow-hidden">
+                {product.image_url ? (
+                  <img
+                    src={product.image_url}
+                    alt={`${product.brand} ${product.model} - ${product.color_name}`}
+                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
                   />
+                ) : (
+                  <>
+                    {product.color_hex && (
+                      <div
+                        className="absolute inset-0 opacity-20"
+                        style={{ backgroundColor: product.color_hex }}
+                      />
+                    )}
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="text-4xl sm:text-6xl">📱</div>
+                    </div>
+                  </>
                 )}
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="text-4xl sm:text-6xl">📱</div>
-                </div>
                 {!product.in_stock && (
                   <div className="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-1 rounded">
                     Out of Stock

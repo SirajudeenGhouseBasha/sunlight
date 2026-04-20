@@ -23,6 +23,8 @@ interface Product {
   color_hex?: string;
   price_modifier: number;
   stock_quantity: number;
+  image_url?: string;
+  additional_images?: string[];
   model: {
     id: string;
     name: string;
@@ -65,14 +67,14 @@ export default function ProductDetailsPage() {
 
   const fetchProduct = async () => {
     try {
-      const response = await fetch(`/api/variants/${variantId}`);
+      const response = await fetch(`/api/products/${variantId}`);
       const data = await response.json();
       
       if (!response.ok) {
         throw new Error(data.error || 'Failed to fetch product');
       }
       
-      setProduct(data.variant);
+      setProduct(data.product);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -154,15 +156,25 @@ export default function ProductDetailsPage() {
           
           {/* Product Image */}
           <div className="aspect-square bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg relative overflow-hidden">
-            {product.color_hex && (
-              <div
-                className="absolute inset-0 opacity-20"
-                style={{ backgroundColor: product.color_hex }}
+            {product.image_url ? (
+              <img
+                src={product.image_url}
+                alt={`${product.model.brand.name} ${product.model.name} - ${product.color_name}`}
+                className="w-full h-full object-cover"
               />
+            ) : (
+              <>
+                {product.color_hex && (
+                  <div
+                    className="absolute inset-0 opacity-20"
+                    style={{ backgroundColor: product.color_hex }}
+                  />
+                )}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="text-9xl">📱</div>
+                </div>
+              </>
             )}
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="text-9xl">📱</div>
-            </div>
             {!inStock && (
               <div className="absolute top-4 right-4 bg-red-500 text-white px-4 py-2 rounded-lg font-semibold">
                 Out of Stock

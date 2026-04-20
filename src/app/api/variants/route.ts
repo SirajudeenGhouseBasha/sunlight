@@ -93,7 +93,9 @@ export async function POST(request: NextRequest) {
       color_name,
       color_hex,
       price_modifier,
-      stock_quantity
+      stock_quantity,
+      image_url,
+      additional_images
     } = body;
     
     if (!model_id || !product_type_id || !color_name || price_modifier === undefined) {
@@ -150,6 +152,8 @@ export async function POST(request: NextRequest) {
         color_hex,
         price_modifier: price_modifier || 0,
         stock_quantity: stock_quantity || 0,
+        image_url: image_url || null,
+        additional_images: additional_images || [],
         is_active: true,
       })
       .select(`

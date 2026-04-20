@@ -1,122 +1,176 @@
 /**
- * Individual Product Variant API Route
+ * Individual Variant API Route
  * 
- * Handles CRUD operations for individual product variants
- * Requirements: 2.4, 2.5 - Variant management and pricing
+ * Handles operations for a specific variant including multiple images
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/src/lib/supabase/server';
-import { requireAdmin } from '@/src/lib/auth/session';
 
-// GET /api/variants/[id] - Get specific product variant
+// GET /api/variants/[id] - Get single variant
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: any
 ) {
+  console.log('=== VARIANT API DEBUG ===');
+  console.log('Request URL:', request.url);
+  console.log('Context:', context);
+  console.log('Params:', context.params);
+  
   try {
+    // Handle both sync and async params
+    let id: string;
+    if (context.params && typeof context.params.then === 'function') {
+      const params = await context.params;
+      id = params.id;
+    } else {
+      id = context.params?.id;
+    }
+    
+    console.log('Extracted ID:', id);
+    
+    if (!id) {
+      return NextResponse.json(
+        { error: 'No ID provided', debug: { context } },
+        { status: 400 }
+      );
+    }
+    
     const supabase = await createClient();
-    const { id } = params;
     
     const { data: variant, error } = await supabase
       .from('variants')
       .select(`
-        *,
-        model:models(id, name, slug, brand:brands(id, name, slug)),
-        product_type:product_types(id, name, slug, base_price, material_properties)
+        id,
+        name,
+        color_name,
+        color_hex,
+        price_modifier,
+        stock_quantity,
+        is_active,
+        image_url,
+        additional_images,
+        created_at,
+        model:models (
+          id,
+          name,
+          brand:brands (
+            id,
+            name,
+            logo_url
+          )
+        ),
+        product_type:product_types (
+          id,
+          name,
+          base_price,
+          description,
+          material
+        )
       `)
       .eq('id', id)
       .single();
     
-    if (error) {
-      if (error.code === 'PGRST116') {
-        return NextResponse.json(
-          { error: 'Variant not found' },
-          { status: 404 }
-        );
-      }
-      
+    console.log('Database query result:', { variant, error });
+    
+    if (error || !variant) {
+      console.log('Variant not found, returning 404');
       return NextResponse.json(
-        { error: 'Failed to fetch variant' },
-        { status: 500 }
+        { error: 'Variant not found', debug: { id, error } },
+        { status: 404 }
       );
     }
     
     return NextResponse.json({ variant });
   } catch (error) {
+    console.error('Variant API error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error', debug: error },
       { status: 500 }
     );
   }
 }
 
-// PUT /api/variants/[id] - Update specific product variant (Admin only)
-export async function PUT(
+// PATCH /api/variants/[id] - Update variant (Admin only)
+export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    // Require admin authentication
-    await requireAdmin();
-    
-    const supabase = await createClient();
     const { id } = params;
-    const body = await request.json();
+    const supabase = await createClient();
     
+    // Check if user is admin
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+    
+    // Verify admin role
+    const { data: userData } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+    
+    if (!userData || userData.role !== 'admin') {
+      return NextResponse.json(
+        { error: 'Forbidden - Admin access required' },
+        { status: 403 }
+      );
+    }
+    
+    const body = await request.json();
     const {
       name,
       color_name,
       color_hex,
       price_modifier,
       stock_quantity,
-      is_active
+      image_url,
+      additional_images,
+      is_active,
     } = body;
     
-    if (stock_quantity !== undefined && stock_quantity < 0) {
-      return NextResponse.json(
-        { error: 'Stock quantity must be non-negative' },
-        { status: 400 }
-      );
-    }
-    
-    const updateData: any = {
-      updated_at: new Date().toISOString(),
-    };
-    
-    if (name !== undefined) updateData.name = name;
-    if (color_name !== undefined) updateData.color_name = color_name;
-    if (color_hex !== undefined) updateData.color_hex = color_hex;
-    if (price_modifier !== undefined) updateData.price_modifier = price_modifier;
-    if (stock_quantity !== undefined) updateData.stock_quantity = stock_quantity;
-    if (is_active !== undefined) updateData.is_active = is_active;
+    // Build update object
+    const updates: any = {};
+    if (name !== undefined) updates.name = name;
+    if (color_name !== undefined) updates.color_name = color_name;
+    if (color_hex !== undefined) updates.color_hex = color_hex;
+    if (price_modifier !== undefined) updates.price_modifier = price_modifier;
+    if (stock_quantity !== undefined) updates.stock_quantity = stock_quantity;
+    if (image_url !== undefined) updates.image_url = image_url;
+    if (additional_images !== undefined) updates.additional_images = additional_images;
+    if (is_active !== undefined) updates.is_active = is_active;
     
     const { data: variant, error } = await supabase
       .from('variants')
-      .update(updateData)
+      .update(updates)
       .eq('id', id)
       .select(`
         *,
-        model:models(id, name, slug, brand:brands(id, name, slug)),
-        product_type:product_types(id, name, slug, base_price, material_properties)
+        model:models (
+          id,
+          name,
+          brand:brands (
+            id,
+            name
+          )
+        ),
+        product_type:product_types (
+          id,
+          name,
+          base_price
+        )
       `)
       .single();
     
     if (error) {
-      if (error.code === 'PGRST116') {
-        return NextResponse.json(
-          { error: 'Variant not found' },
-          { status: 404 }
-        );
-      }
-      
-      if (error.code === '23505') {
-        return NextResponse.json(
-          { error: 'Variant with this combination already exists' },
-          { status: 409 }
-        );
-      }
-      
+      console.error('Error updating variant:', error);
       return NextResponse.json(
         { error: 'Failed to update variant' },
         { status: 500 }
@@ -125,13 +179,6 @@ export async function PUT(
     
     return NextResponse.json({ variant });
   } catch (error) {
-    if (error instanceof Error && error.message.includes('unauthorized')) {
-      return NextResponse.json(
-        { error: 'Admin access required' },
-        { status: 403 }
-      );
-    }
-    
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -139,35 +186,56 @@ export async function PUT(
   }
 }
 
-// DELETE /api/variants/[id] - Delete specific product variant (Admin only)
+// DELETE /api/variants/[id] - Delete variant (Admin only)
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    // Require admin authentication
-    await requireAdmin();
-    
-    const supabase = await createClient();
     const { id } = params;
+    const supabase = await createClient();
     
-    // Check if variant has associated orders or cart items
-    const { data: orders, error: ordersError } = await supabase
-      .from('order_items')
+    // Check if user is admin
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+    
+    // Verify admin role
+    const { data: userData } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+    
+    if (!userData || userData.role !== 'admin') {
+      return NextResponse.json(
+        { error: 'Forbidden - Admin access required' },
+        { status: 403 }
+      );
+    }
+    
+    // Check if variant is used in predesigned products
+    const { data: predesignedProducts, error: predesignedError } = await supabase
+      .from('predesigned_products')
       .select('id')
       .eq('variant_id', id)
       .limit(1);
     
-    if (ordersError) {
+    if (predesignedError) {
       return NextResponse.json(
         { error: 'Failed to check variant dependencies' },
         { status: 500 }
       );
     }
     
-    if (orders && orders.length > 0) {
+    if (predesignedProducts && predesignedProducts.length > 0) {
       return NextResponse.json(
-        { error: 'Cannot delete variant with existing orders' },
+        { error: 'Cannot delete variant used in predesigned products. Remove from products first.' },
         { status: 409 }
       );
     }
@@ -178,28 +246,14 @@ export async function DELETE(
       .eq('id', id);
     
     if (error) {
-      if (error.code === 'PGRST116') {
-        return NextResponse.json(
-          { error: 'Variant not found' },
-          { status: 404 }
-        );
-      }
-      
       return NextResponse.json(
         { error: 'Failed to delete variant' },
         { status: 500 }
       );
     }
     
-    return NextResponse.json({ message: 'Variant deleted successfully' });
+    return NextResponse.json({ success: true });
   } catch (error) {
-    if (error instanceof Error && error.message.includes('unauthorized')) {
-      return NextResponse.json(
-        { error: 'Admin access required' },
-        { status: 403 }
-      );
-    }
-    
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

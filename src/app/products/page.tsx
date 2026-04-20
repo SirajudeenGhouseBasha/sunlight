@@ -28,6 +28,8 @@ interface Product {
   price: number;
   stock_quantity: number;
   in_stock: boolean;
+  image_url?: string;
+  additional_images?: string[];
 }
 
 interface Brand {
@@ -331,16 +333,26 @@ export default function ProductsPage() {
                 {products.map((product) => (
                   <Card key={product.id} className="group overflow-hidden hover:shadow-xl transition-all duration-300 border-gray-200">
                     <Link href={`/products/${product.variant_id}`}>
-                      <div className="aspect-square bg-gradient-to-br from-gray-50 to-gray-100 relative">
-                        {product.color_hex && (
-                          <div
-                            className="absolute inset-0 opacity-20"
-                            style={{ backgroundColor: product.color_hex }}
+                      <div className="aspect-square bg-gradient-to-br from-gray-50 to-gray-100 relative overflow-hidden">
+                        {product.image_url ? (
+                          <img
+                            src={product.image_url}
+                            alt={`${product.name} - ${product.color_name}`}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                           />
+                        ) : (
+                          <>
+                            {product.color_hex && (
+                              <div
+                                className="absolute inset-0 opacity-20"
+                                style={{ backgroundColor: product.color_hex }}
+                              />
+                            )}
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <div className="text-7xl">📱</div>
+                            </div>
+                          </>
                         )}
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <div className="text-7xl">📱</div>
-                        </div>
                         {!product.in_stock && (
                           <div className="absolute top-3 right-3 bg-red-500 text-white text-xs font-medium px-3 py-1 rounded-full">
                             Out of Stock

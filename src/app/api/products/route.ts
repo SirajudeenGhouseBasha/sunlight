@@ -28,7 +28,16 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from('variants')
       .select(`
-        *,
+        id,
+        name,
+        color_name,
+        color_hex,
+        price_modifier,
+        stock_quantity,
+        is_active,
+        image_url,
+        additional_images,
+        created_at,
         model:models!inner(
           id,
           name,
@@ -94,6 +103,8 @@ export async function GET(request: NextRequest) {
       stock_quantity: variant.stock_quantity,
       in_stock: variant.stock_quantity > 0,
       is_active: variant.is_active,
+      image_url: variant.image_url,
+      additional_images: variant.additional_images || [],
     })) || [];
     
     return NextResponse.json({

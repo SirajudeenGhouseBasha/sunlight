@@ -1,8 +1,7 @@
 /**
- * Product Variants Management Page
+ * Product Variants Management Page with Multiple Images Support
  * 
- * Admin interface for managing product variants (colors, pricing, inventory)
- * Requirements: 2.4, 2.5, 11.5 - Variant management and pricing
+ * Admin interface for managing product variants (colors, pricing, inventory, images)
  */
 
 'use client';
@@ -13,15 +12,62 @@ import { Button } from '@/src/components/ui/button';
 import { Input } from '@/src/components/ui/input';
 import { Label } from '@/src/components/ui/label';
 import Link from 'next/link';
-import { ProductVariant, ProductType, PhoneModel, COLORS } from '@/src/types/products';
+import Image from 'next/image';
+
+interface Brand {
+  id: string;
+  name: string;
+}
+
+interface Model {
+  id: string;
+  name: string;
+  brand: Brand;
+}
+
+interface ProductType {
+  id: string;
+  name: string;
+  base_price: number;
+}
+
+interface Variant {
+  id: string;
+  model_id: string;
+  product_type_id: string;
+  name: string;
+  color_name: string;
+  color_hex: string;
+  price_modifier: number;
+  stock_quantity: number;
+  image_url: string | null;
+  additional_images: string[];
+  is_active: boolean;
+  created_at: string;
+  model: Model;
+  product_type: ProductType;
+}
+
+const COLORS = {
+  BLACK: { name: 'Black', hex: '#000000', is_popular: true },
+  WHITE: { name: 'White', hex: '#FFFFFF', is_popular: true },
+  CLEAR: { name: 'Clear', hex: '#F8F9FA', is_popular: true },
+  BLUE: { name: 'Blue', hex: '#0066CC', is_popular: true },
+  RED: { name: 'Red', hex: '#CC0000', is_popular: true },
+  GREEN: { name: 'Green', hex: '#00CC66', is_popular: true },
+  PINK: { name: 'Pink', hex: '#FF69B4', is_popular: false },
+  PURPLE: { name: 'Purple', hex: '#8A2BE2', is_popular: false },
+};
 
 export default function VariantsPage() {
-  const [variants, setVariants] = useState<ProductVariant[]>([]);
+  const [variants, setVariants] = useState<Variant[]>([]);
   const [productTypes, setProductTypes] = useState<ProductType[]>([]);
-  const [models, setModels] = useState<PhoneModel[]>([]);
+  const [models, setModels] = useState<Model[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  
+  // Form state
   const [formData, setFormData] = useState({
     model_id: '',
     product_type_id: '',
@@ -30,10 +76,20 @@ export default function VariantsPage() {
     price_modifier: '0',
     stock_quantity: '0',
   });
+  
+  // Image state
+  const [mainImage, setMainImage] = useState<File | null>(null);
+  const [additionalImages, setAdditionalImages] = useState<File[]>([]);
+  const [mainImageUrl, setMainImageUrl] = useState('');
+  const [additionalImageUrls, setAdditionalImageUrls] = useState<string[]>([]);
+  const [imageUploading, setImageUploading] = useState(false);
+  
+  // Filter state
   const [filters, setFilters] = useState({
     model_id: '',
     product_type_id: '',
   });
+  
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -72,17 +128,52 @@ export default function VariantsPage() {
     }
   };
 
+  const uploadImage = async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    const response = await fetch('/api/upload', {
+      method: 'POST',
+      body: formData,
+    });
+    
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to upload image');
+    }
+    
+    return data.url;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccess('');
+    setImageUploading(true);
 
     try {
+      // Upload images first
+      let uploadedMainImageUrl = mainImageUrl;
+      let uploadedAdditionalUrls = [...additionalImageUrls];
+      
+      // Upload main image if new file selected
+      if (mainImage) {
+        uploadedMainImageUrl = await uploadImage(mainImage);
+      }
+      
+      // Upload additional images if new files selected
+      if (additionalImages.length > 0) {
+        const uploadPromises = additionalImages.map(file => uploadImage(file));
+        const newUrls = await Promise.all(uploadPromises);
+        uploadedAdditionalUrls = [...uploadedAdditionalUrls, ...newUrls];
+      }
+
       const url = editingId 
         ? `/api/variants/${editingId}` 
         : '/api/variants';
       
-      const method = editingId ? 'PUT' : 'POST';
+      const method = editingId ? 'PATCH' : 'POST';
 
       const response = await fetch(url, {
         method,
@@ -94,6 +185,8 @@ export default function VariantsPage() {
           color_hex: formData.color_hex,
           price_modifier: parseFloat(formData.price_modifier),
           stock_quantity: parseInt(formData.stock_quantity),
+          image_url: uploadedMainImageUrl || null,
+          additional_images: uploadedAdditionalUrls,
         }),
       });
 
@@ -110,10 +203,12 @@ export default function VariantsPage() {
       fetchData();
     } catch (err: any) {
       setError(err.message);
+    } finally {
+      setImageUploading(false);
     }
   };
 
-  const handleEdit = (variant: ProductVariant) => {
+  const handleEdit = (variant: Variant) => {
     setEditingId(variant.id);
     setFormData({
       model_id: variant.model_id,
@@ -123,6 +218,10 @@ export default function VariantsPage() {
       price_modifier: variant.price_modifier.toString(),
       stock_quantity: variant.stock_quantity.toString(),
     });
+    setMainImageUrl(variant.image_url || '');
+    setAdditionalImageUrls(variant.additional_images || []);
+    setMainImage(null);
+    setAdditionalImages([]);
     setShowForm(true);
     setError('');
     setSuccess('');
@@ -158,6 +257,10 @@ export default function VariantsPage() {
       price_modifier: '0',
       stock_quantity: '0',
     });
+    setMainImage(null);
+    setAdditionalImages([]);
+    setMainImageUrl('');
+    setAdditionalImageUrls([]);
   };
 
   const cancelForm = () => {
@@ -175,6 +278,32 @@ export default function VariantsPage() {
     });
   };
 
+  const handleMainImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setMainImage(file);
+      // Clear existing URL when new file selected
+      setMainImageUrl('');
+    }
+  };
+
+  const handleAdditionalImagesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    setAdditionalImages([...additionalImages, ...files]);
+  };
+
+  const removeAdditionalImage = (index: number) => {
+    const newImages = [...additionalImages];
+    newImages.splice(index, 1);
+    setAdditionalImages(newImages);
+  };
+
+  const removeAdditionalImageUrl = (index: number) => {
+    const newUrls = [...additionalImageUrls];
+    newUrls.splice(index, 1);
+    setAdditionalImageUrls(newUrls);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Mobile-First Header */}
@@ -183,7 +312,7 @@ export default function VariantsPage() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-xl font-bold text-gray-900">Product Variants</h1>
-              <p className="text-sm text-gray-600 mt-1">Manage colors & inventory</p>
+              <p className="text-sm text-gray-600 mt-1">Manage colors, images & inventory</p>
             </div>
             <Link href="/admin">
               <Button variant="outline" size="sm">← Back</Button>
@@ -265,11 +394,12 @@ export default function VariantsPage() {
               <CardHeader>
                 <CardTitle>{editingId ? 'Edit' : 'Add'} Variant</CardTitle>
                 <CardDescription>
-                  {editingId ? 'Update' : 'Create a new'} product variant
+                  {editingId ? 'Update' : 'Create a new'} product variant with images
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  {/* Basic Info */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="model_id">Phone Model *</Label>
@@ -301,7 +431,7 @@ export default function VariantsPage() {
                         <option value="">Select Type</option>
                         {productTypes.map((type) => (
                           <option key={type.id} value={type.id}>
-                            {type.name} (${type.base_price})
+                            {type.name} (₹{type.base_price})
                           </option>
                         ))}
                       </select>
@@ -370,9 +500,111 @@ export default function VariantsPage() {
                     </div>
                   </div>
 
+                  {/* Images Section */}
+                  <div className="space-y-4">
+                    <Label className="text-base font-semibold">Product Images</Label>
+                    
+                    {/* Main Image */}
+                    <div>
+                      <Label htmlFor="main_image" className="text-sm">Main Product Image</Label>
+                      <Input
+                        id="main_image"
+                        type="file"
+                        accept="image/*"
+                        onChange={handleMainImageChange}
+                        className="h-11 mt-1"
+                      />
+                      {(mainImageUrl || mainImage) && (
+                        <div className="mt-2">
+                          <div className="relative w-24 h-24 rounded-lg overflow-hidden border">
+                            <Image
+                              src={mainImage ? URL.createObjectURL(mainImage) : mainImageUrl}
+                              alt="Main product image"
+                              fill
+                              className="object-cover"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Additional Images */}
+                    <div>
+                      <Label htmlFor="additional_images" className="text-sm">Additional Images (Gallery)</Label>
+                      <Input
+                        id="additional_images"
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={handleAdditionalImagesChange}
+                        className="h-11 mt-1"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Upload multiple angles: front, back, side views, etc.
+                      </p>
+                      
+                      {/* Show existing additional images */}
+                      {additionalImageUrls.length > 0 && (
+                        <div className="mt-2">
+                          <p className="text-xs text-gray-600 mb-2">Current Images:</p>
+                          <div className="flex flex-wrap gap-2">
+                            {additionalImageUrls.map((url, index) => (
+                              <div key={index} className="relative">
+                                <div className="relative w-20 h-20 rounded-lg overflow-hidden border">
+                                  <Image
+                                    src={url}
+                                    alt={`Additional image ${index + 1}`}
+                                    fill
+                                    className="object-cover"
+                                  />
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => removeAdditionalImageUrl(index)}
+                                  className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs"
+                                >
+                                  ×
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Show new additional images */}
+                      {additionalImages.length > 0 && (
+                        <div className="mt-2">
+                          <p className="text-xs text-gray-600 mb-2">New Images to Upload:</p>
+                          <div className="flex flex-wrap gap-2">
+                            {additionalImages.map((file, index) => (
+                              <div key={index} className="relative">
+                                <div className="relative w-20 h-20 rounded-lg overflow-hidden border">
+                                  <Image
+                                    src={URL.createObjectURL(file)}
+                                    alt={`New image ${index + 1}`}
+                                    fill
+                                    className="object-cover"
+                                  />
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => removeAdditionalImage(index)}
+                                  className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs"
+                                >
+                                  ×
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Pricing & Stock */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="price_modifier">Price Modifier ($)</Label>
+                      <Label htmlFor="price_modifier">Price Modifier (₹)</Label>
                       <Input
                         id="price_modifier"
                         type="number"
@@ -402,15 +634,28 @@ export default function VariantsPage() {
                     </div>
                   </div>
 
+                  {/* Submit Buttons */}
                   <div className="flex gap-3 pt-2">
-                    <Button type="submit" className="h-11 flex-1">
-                      {editingId ? 'Update' : 'Create'}
+                    <Button 
+                      type="submit" 
+                      className="h-11 flex-1"
+                      disabled={imageUploading}
+                    >
+                      {imageUploading ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                          Uploading...
+                        </>
+                      ) : (
+                        editingId ? 'Update Variant' : 'Create Variant'
+                      )}
                     </Button>
                     <Button 
                       type="button" 
                       variant="outline" 
                       onClick={cancelForm}
                       className="h-11 flex-1"
+                      disabled={imageUploading}
                     >
                       Cancel
                     </Button>
@@ -432,7 +677,7 @@ export default function VariantsPage() {
               <CardContent className="p-8 text-center">
                 <p className="text-gray-500 mb-4">No variants found</p>
                 <p className="text-sm text-gray-400">
-                  Create variants to manage product colors and inventory
+                  Create variants to manage product colors, images and inventory
                 </p>
               </CardContent>
             </Card>
@@ -442,11 +687,35 @@ export default function VariantsPage() {
                 <Card key={variant.id}>
                   <CardContent className="p-4">
                     <div className="flex items-start gap-4">
-                      {/* Color Preview */}
-                      <div 
-                        className="w-16 h-16 rounded-lg border-2 border-gray-300 flex-shrink-0"
-                        style={{ backgroundColor: variant.color_hex || '#000000' }}
-                      />
+                      {/* Images Preview */}
+                      <div className="flex-shrink-0">
+                        {variant.image_url ? (
+                          <div className="relative w-20 h-20 rounded-lg overflow-hidden border">
+                            <Image
+                              src={variant.image_url}
+                              alt={variant.name}
+                              fill
+                              className="object-cover"
+                            />
+                          </div>
+                        ) : (
+                          <div 
+                            className="w-20 h-20 rounded-lg border-2 border-gray-300 flex items-center justify-center"
+                            style={{ backgroundColor: variant.color_hex || '#000000' }}
+                          >
+                            <span className="text-xs text-white font-semibold">
+                              {variant.color_name.charAt(0)}
+                            </span>
+                          </div>
+                        )}
+                        
+                        {/* Additional images count */}
+                        {variant.additional_images && variant.additional_images.length > 0 && (
+                          <div className="text-xs text-center mt-1 text-gray-500">
+                            +{variant.additional_images.length} more
+                          </div>
+                        )}
+                      </div>
                       
                       {/* Variant Info */}
                       <div className="flex-1 min-w-0">
@@ -467,9 +736,12 @@ export default function VariantsPage() {
                             <span className={`text-sm font-medium ${
                               variant.price_modifier > 0 ? 'text-green-600' : 'text-red-600'
                             }`}>
-                              {variant.price_modifier > 0 ? '+' : ''}${variant.price_modifier.toFixed(2)}
+                              {variant.price_modifier > 0 ? '+' : ''}₹{variant.price_modifier.toFixed(2)}
                             </span>
                           )}
+                          <span className="text-xs text-gray-400">
+                            Images: {(variant.image_url ? 1 : 0) + (variant.additional_images?.length || 0)}
+                          </span>
                         </div>
                       </div>
 

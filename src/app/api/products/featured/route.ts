@@ -25,6 +25,8 @@ export async function GET(request: NextRequest) {
         price_modifier,
         stock_quantity,
         is_active,
+        image_url,
+        additional_images,
         model:models!inner(
           id,
           name,
@@ -71,6 +73,8 @@ export async function GET(request: NextRequest) {
       color_hex: variant.color_hex,
       price: variant.product_type.base_price + variant.price_modifier,
       in_stock: variant.stock_quantity > 0,
+      image_url: variant.image_url,
+      additional_images: variant.additional_images || [],
     }));
 
     return NextResponse.json({ products });
