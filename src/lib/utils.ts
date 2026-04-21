@@ -1,4 +1,10 @@
-import { clsx, type ClassValue } from "clsx"
+/**
+ * Utility Functions
+ * 
+ * Common utility functions used across the application
+ */
+
+import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
 
 export function cn(...inputs: ClassValue[]) {

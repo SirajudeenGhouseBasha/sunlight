@@ -1,218 +1,167 @@
-import { redirect } from 'next/navigation'
-import { LogOut, Sun, User, Settings, BarChart3, Calendar, Bell } from 'lucide-react'
-import { createClient } from '@/src/lib/supabase/server'
-import { logoutAction } from '@/src/actions/auth/logout'
-import { Button } from '@/src/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/src/components/ui/card'
+/**
+ * Dashboard Page Component
+ * 
+ * Main user dashboard after authentication - Mobile-First Design
+ * Requirements: 3.4 - Protected route with user interface
+ */
+
+import { requireAuth } from '@/src/lib/auth/session';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/src/components/ui/card';
+import { Button } from '@/src/components/ui/button';
+import Link from 'next/link';
 
 export default async function DashboardPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user) {
-    redirect('/auth/login')
-  }
+  const user = await requireAuth();
 
   return (
-    <div className="min-h-screen bg-background font-sans">
-      {/* ══════════════════════════════════════════════════════════════════
-          Header Navigation
-      ══════════════════════════════════════════════════════════════════ */}
-      <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container-wide flex items-center justify-between py-4">
-          {/* Logo */}
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-foreground rounded-lg flex items-center justify-center">
-              <Sun className="w-4 h-4 text-background" />
+    <div className="min-h-screen bg-gray-50">
+      {/* Mobile-First Header */}
+      <header className="bg-white shadow-sm border-b">
+        <div className="px-4 py-4 sm:px-6">
+          <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+              <p className="text-sm text-gray-600 mt-1">Welcome back, {user.full_name || user.email}!</p>
             </div>
-            <span className="text-xl font-semibold text-foreground">Sunlight</span>
-          </div>
-
-          {/* Navigation */}
-          <nav className="hidden md:flex items-center gap-8">
-            <a href="#overview" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-              Overview
-            </a>
-            <a href="#analytics" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-              Analytics
-            </a>
-            <a href="#settings" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-              Settings
-            </a>
-          </nav>
-
-          {/* User menu */}
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" className="gap-2">
-              <Bell className="w-4 h-4" />
-              <span className="hidden sm:inline">Notifications</span>
-            </Button>
-            <form action={logoutAction}>
-              <Button type="submit" variant="ghost" size="sm" className="gap-2">
-                <LogOut className="w-4 h-4" />
-                <span className="hidden sm:inline">Sign out</span>
-              </Button>
-            </form>
+            <div className="flex space-x-2">
+              <Link href="/profile">
+                <Button variant="outline" size="sm">Profile</Button>
+              </Link>
+              <form action="/auth/logout" method="post">
+                <Button variant="outline" size="sm" type="submit">Sign Out</Button>
+              </form>
+            </div>
           </div>
         </div>
       </header>
 
-      {/* ══════════════════════════════════════════════════════════════════
-          Main Content
-      ══════════════════════════════════════════════════════════════════ */}
-      <main className="py-8">
-        <div className="container-wide space-y-8">
+      {/* Main Content - Mobile Optimized */}
+      <main className="px-4 py-6 sm:px-6">
+        <div className="space-y-6">
           
-          {/* Welcome Section */}
-          <div className="space-y-2">
-            <h1 className="text-3xl font-semibold text-foreground">
-              Welcome back
-            </h1>
-            <p className="text-muted-foreground">
-              Here's what's happening with your account today.
-            </p>
-          </div>
+          {/* Quick Actions - Mobile First */}
+          <Card>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg">Quick Actions</CardTitle>
+              <CardDescription>Get started with your phone case design</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Link href="/designs/create" className="block">
+                <Button className="w-full h-12 text-base font-medium">
+                  🎨 Create New Design
+                </Button>
+              </Link>
+              <div className="grid grid-cols-2 gap-3">
+                <Link href="/products" className="block">
+                  <Button variant="outline" className="w-full h-11 text-sm">
+                    📱 Browse Cases
+                  </Button>
+                </Link>
+                <Link href="/cart" className="block">
+                  <Button variant="outline" className="w-full h-11 text-sm">
+                    🛒 View Cart
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
 
-          {/* Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Card className="border-border">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Total Projects
-                </CardTitle>
-                <BarChart3 className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-semibold text-foreground">12</div>
-                <p className="text-xs text-muted-foreground">
-                  +2 from last month
-                </p>
-              </CardContent>
-            </Card>
+          {/* Recent Orders - Mobile Optimized */}
+          <Card>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg">Recent Orders</CardTitle>
+              <CardDescription>Your latest phone case orders</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-8">
+                <div className="text-4xl mb-3">📦</div>
+                <p className="text-gray-500 mb-4">No orders yet</p>
+                <Link href="/products">
+                  <Button variant="outline" className="h-11">Start Shopping</Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
 
-            <Card className="border-border">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Active Tasks
-                </CardTitle>
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-semibold text-foreground">24</div>
-                <p className="text-xs text-muted-foreground">
-                  8 due this week
-                </p>
-              </CardContent>
-            </Card>
+          {/* My Designs - Mobile Optimized */}
+          <Card>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg">My Designs</CardTitle>
+              <CardDescription>Your custom phone case designs</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-8">
+                <div className="text-4xl mb-3">🎨</div>
+                <p className="text-gray-500 mb-4">No designs yet</p>
+                <Link href="/designs/create">
+                  <Button variant="outline" className="h-11">Create Design</Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
 
-            <Card className="border-border">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Team Members
-                </CardTitle>
-                <User className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-semibold text-foreground">8</div>
-                <p className="text-xs text-muted-foreground">
-                  +1 new this month
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Main Dashboard Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            
-            {/* User Profile Card */}
-            <Card className="border-border">
-              <CardHeader>
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-foreground rounded-lg flex items-center justify-center">
-                    <User className="w-6 h-6 text-background" />
+          {/* Account Info - Mobile Optimized */}
+          <Card>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg">Account Information</CardTitle>
+              <CardDescription>Your account details and preferences</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div>
+                <h3 className="font-medium text-gray-900 mb-3">Profile</h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between py-2 border-b border-gray-100">
+                    <span className="text-gray-600">Name</span>
+                    <span className="font-medium">{user.full_name || 'Not set'}</span>
                   </div>
-                  <div>
-                    <CardTitle className="text-xl text-foreground">Your Profile</CardTitle>
-                    <CardDescription>Manage your account settings</CardDescription>
+                  <div className="flex justify-between py-2 border-b border-gray-100">
+                    <span className="text-gray-600">Email</span>
+                    <span className="font-medium text-xs">{user.email}</span>
+                  </div>
+                  <div className="flex justify-between py-2 border-b border-gray-100">
+                    <span className="text-gray-600">Role</span>
+                    <span className="font-medium capitalize">{user.role}</span>
+                  </div>
+                  <div className="flex justify-between py-2">
+                    <span className="text-gray-600">Status</span>
+                    <span className={`font-medium ${user.is_active ? 'text-green-600' : 'text-red-600'}`}>
+                      {user.is_active ? 'Active' : 'Inactive'}
+                    </span>
                   </div>
                 </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-muted-foreground">Email</label>
-                  <div className="text-sm font-mono bg-muted rounded-lg px-3 py-2 break-all text-foreground">
-                    {user.email}
-                  </div>
+              </div>
+              
+              <div>
+                <h3 className="font-medium text-gray-900 mb-3">Quick Links</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <Link href="/profile">
+                    <Button variant="outline" className="w-full h-11 text-sm">
+                      Edit Profile
+                    </Button>
+                  </Link>
+                  <Link href="/orders">
+                    <Button variant="outline" className="w-full h-11 text-sm">
+                      Order History
+                    </Button>
+                  </Link>
+                  <Link href="/designs">
+                    <Button variant="outline" className="w-full h-11 text-sm">
+                      My Designs
+                    </Button>
+                  </Link>
+                  {user.role === 'admin' && (
+                    <Link href="/admin">
+                      <Button variant="outline" className="w-full h-11 text-sm">
+                        Admin Panel
+                      </Button>
+                    </Link>
+                  )}
                 </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-muted-foreground">User ID</label>
-                  <div className="text-xs font-mono bg-muted rounded-lg px-3 py-2 break-all text-muted-foreground">
-                    {user.id}
-                  </div>
-                </div>
-                <Button variant="outline" className="w-full gap-2">
-                  <Settings className="w-4 h-4" />
-                  Edit Profile
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* Quick Actions */}
-            <Card className="border-border">
-              <CardHeader>
-                <CardTitle className="text-xl text-foreground">Quick Actions</CardTitle>
-                <CardDescription>Common tasks and shortcuts</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <Button variant="outline" className="w-full justify-start gap-3 h-12">
-                  <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
-                    <BarChart3 className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                  </div>
-                  <div className="text-left">
-                    <div className="font-medium text-foreground">View Analytics</div>
-                    <div className="text-xs text-muted-foreground">Check your performance metrics</div>
-                  </div>
-                </Button>
-
-                <Button variant="outline" className="w-full justify-start gap-3 h-12">
-                  <div className="w-8 h-8 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
-                    <Calendar className="w-4 h-4 text-green-600 dark:text-green-400" />
-                  </div>
-                  <div className="text-left">
-                    <div className="font-medium text-foreground">Schedule Meeting</div>
-                    <div className="text-xs text-muted-foreground">Book time with your team</div>
-                  </div>
-                </Button>
-
-                <Button variant="outline" className="w-full justify-start gap-3 h-12">
-                  <div className="w-8 h-8 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
-                    <Settings className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                  </div>
-                  <div className="text-left">
-                    <div className="font-medium text-foreground">Account Settings</div>
-                    <div className="text-xs text-muted-foreground">Manage preferences and security</div>
-                  </div>
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Status Card */}
-          <Card className="border-dashed border-border bg-muted/30">
-            <CardContent className="pt-6">
-              <div className="text-center space-y-2">
-                <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center mx-auto">
-                  <Sun className="w-6 h-6 text-green-600 dark:text-green-400" />
-                </div>
-                <h3 className="font-semibold text-foreground">Authentication Working</h3>
-                <p className="text-sm text-muted-foreground">
-                  🎉 Your Supabase authentication is properly configured. This is your protected dashboard.
-                </p>
               </div>
             </CardContent>
           </Card>
         </div>
       </main>
     </div>
-  )
+  );
 }
