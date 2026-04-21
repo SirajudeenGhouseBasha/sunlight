@@ -7,6 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/src/lib/supabase/server';
+import { createProductResponse } from '@/src/lib/cache/http-cache';
 
 // GET /api/products - Search and filter products
 export async function GET(request: NextRequest) {
@@ -14,8 +15,8 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient();
     const { searchParams } = new URL(request.url);
     
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '20');
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1'));
+    const limit = Math.min(50, Math.max(1, parseInt(searchParams.get('limit') || '20')));
     const search = searchParams.get('search') || '';
     const brand_id = searchParams.get('brand_id');
     const model_id = searchParams.get('model_id');
@@ -47,7 +48,7 @@ export async function GET(request: NextRequest) {
           brand:brands!inner(id, name, slug, logo_url)
         ),
         product_type:product_types!inner(id, name, slug, base_price, description, material_properties)
-      `, { count: 'exact' })
+      `, { count: 'planned' })
       .eq('is_active', true)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
@@ -67,9 +68,15 @@ export async function GET(request: NextRequest) {
       query = query.eq('model_id', model_id);
     }
     
-    // Apply product type filter
+    // Apply product type filter (by ID)
     if (product_type_id) {
       query = query.eq('product_type_id', product_type_id);
+    }
+    
+    // Apply category filter (by slug)
+    const category = searchParams.get('category');
+    if (category) {
+      query = query.eq('product_type.slug', category);
     }
     
     // Apply stock filter
@@ -107,7 +114,7 @@ export async function GET(request: NextRequest) {
       additional_images: variant.additional_images || [],
     })) || [];
     
-    return NextResponse.json({
+    return createProductResponse({
       products,
       pagination: {
         page,

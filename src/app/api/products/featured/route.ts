@@ -7,11 +7,12 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/src/lib/supabase/server';
+import { createProductResponse } from '@/src/lib/cache/http-cache';
 
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const limit = parseInt(searchParams.get('limit') || '8');
+    const limit = Math.min(20, Math.max(1, parseInt(searchParams.get('limit') || '8')));
 
     const supabase = await createClient();
 
@@ -46,7 +47,8 @@ export async function GET(request: NextRequest) {
       .eq('model.brand.is_active', true)
       .eq('product_type.is_active', true)
       .gt('stock_quantity', 0)
-      .limit(limit * 2); // Get more to randomize
+      .order('created_at', { ascending: false })
+      .limit(limit);
 
     if (error) {
       console.error('Database error:', error);
@@ -56,13 +58,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Randomize and limit results
-    const shuffled = (variants || [])
-      .sort(() => Math.random() - 0.5)
-      .slice(0, limit);
-
     // Format products
-    const products = shuffled.map((variant: any) => ({
+    const products = (variants || []).map((variant: any) => ({
       id: variant.id,
       variant_id: variant.id,
       name: `${variant.model.brand.name} ${variant.model.name}`,
@@ -77,7 +74,7 @@ export async function GET(request: NextRequest) {
       additional_images: variant.additional_images || [],
     }));
 
-    return NextResponse.json({ products });
+    return createProductResponse({ products });
   } catch (error) {
     console.error('Featured products error:', error);
     return NextResponse.json(

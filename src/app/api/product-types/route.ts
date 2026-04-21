@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/src/lib/supabase/server';
 import { requireAdmin } from '@/src/lib/auth/session';
 import { PRODUCT_TYPES } from '@/src/types/products';
+import { createCachedResponse, CACHE_CONTROL } from '@/src/lib/cache/http-cache';
 
 // GET /api/product-types - List all product types
 export async function GET(request: NextRequest) {
@@ -16,15 +17,15 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient();
     const { searchParams } = new URL(request.url);
     
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '50');
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1'));
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '50')));
     const active = searchParams.get('active');
     
     const offset = (page - 1) * limit;
     
     let query = supabase
       .from('product_types')
-      .select('*', { count: 'exact' })
+      .select('*', { count: 'planned' })
       .order('name', { ascending: true })
       .range(offset, offset + limit - 1);
     
@@ -42,7 +43,7 @@ export async function GET(request: NextRequest) {
       );
     }
     
-    return NextResponse.json({
+    return createCachedResponse({
       product_types,
       pagination: {
         page,
@@ -50,6 +51,9 @@ export async function GET(request: NextRequest) {
         total: count || 0,
         totalPages: Math.ceil((count || 0) / limit),
       },
+    }, {
+      cacheControl: CACHE_CONTROL.MEDIUM,
+      etag: true,
     });
   } catch (error) {
     return NextResponse.json(
