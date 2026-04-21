@@ -7,15 +7,17 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/src/lib/supabase/server';
+import { createProductResponse } from '@/src/lib/cache/http-cache';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const variantId = params.id;
+    const { id } = await params;
+    const variantId = id;
     const searchParams = request.nextUrl.searchParams;
-    const limit = parseInt(searchParams.get('limit') || '4');
+    const limit = Math.min(12, Math.max(1, parseInt(searchParams.get('limit') || '4')));
 
     const supabase = await createClient();
 
@@ -30,9 +32,12 @@ export async function GET(
       .eq('id', variantId)
       .single();
 
-    if (!currentVariant) {
+    if (!currentVariant || !currentVariant.model) {
       return NextResponse.json({ products: [] });
     }
+
+    // Extract brand_id from the model (Supabase returns it as an object, not array)
+    const currentBrandId = (currentVariant.model as any).brand_id;
 
     // Find related products:
     // 1. Same model, different colors
@@ -70,6 +75,7 @@ export async function GET(
       .eq('model.brand.is_active', true)
       .eq('product_type.is_active', true)
       .gt('stock_quantity', 0)
+      .or(`model_id.eq.${currentVariant.model_id},product_type_id.eq.${currentVariant.product_type_id}`)
       .limit(limit * 3); // Get more for scoring
 
     if (error) {
@@ -90,7 +96,7 @@ export async function GET(
       }
       
       // Same brand
-      if (variant.model.brand_id === currentVariant.model.brand_id) {
+      if (variant.model.brand_id === currentBrandId) {
         score += 50;
       }
       
@@ -125,7 +131,7 @@ export async function GET(
       in_stock: variant.stock_quantity > 0,
     }));
 
-    return NextResponse.json({ products });
+    return createProductResponse({ products });
   } catch (error) {
     console.error('Related products error:', error);
     return NextResponse.json(

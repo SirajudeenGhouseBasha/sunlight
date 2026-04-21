@@ -94,10 +94,10 @@ export async function GET(
 // PATCH /api/variants/[id] - Update variant (Admin only)
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const supabase = await createClient();
     
     // Check if user is admin
@@ -189,10 +189,10 @@ export async function PATCH(
 // DELETE /api/variants/[id] - Delete variant (Admin only)
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const supabase = await createClient();
     
     // Check if user is admin

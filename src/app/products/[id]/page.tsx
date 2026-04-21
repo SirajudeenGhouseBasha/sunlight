@@ -1,344 +1,190 @@
-/**
- * Product Details Page
- * 
- * View product details and add to cart
- * Requirements: Product detail view
- */
+import { Suspense } from 'react'
+import { notFound } from 'next/navigation'
+import Image from 'next/image'
+import { getCachedProduct, getCachedRelatedProducts } from '@/src/lib/cache/server-cache'
+import { ProductGrid } from '@/src/components/optimized/ProductGrid'
+import { ProductGridSkeleton } from '@/src/components/loading/ProductSkeleton'
+import { Button } from '@/src/components/ui/button'
 
-'use client';
-
-import { useState, useEffect } from 'react';
-import { Card, CardContent } from '@/src/components/ui/card';
-import { Button } from '@/src/components/ui/button';
-import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
-import { useCart } from '@/src/context/CartContext';
-import { RelatedProducts } from '@/src/components/products/RelatedProducts';
-import { MainNav } from '@/src/components/navigation/MainNav';
-
-interface Product {
-  id: string;
-  name: string;
-  color_name: string;
-  color_hex?: string;
-  price_modifier: number;
-  stock_quantity: number;
-  image_url?: string;
-  additional_images?: string[];
-  model: {
-    id: string;
-    name: string;
-    slug: string;
-    model_number?: string;
-    screen_size?: number;
-    brand: {
-      id: string;
-      name: string;
-      slug: string;
-    };
-  };
-  product_type: {
-    id: string;
-    name: string;
-    slug: string;
-    base_price: number;
-    description?: string;
-    material_properties?: any;
-  };
+interface ProductPageProps {
+  params: Promise<{
+    id: string
+  }>
 }
 
-export default function ProductDetailsPage() {
-  const params = useParams();
-  const router = useRouter();
-  const variantId = params.id as string;
-  const { addToCart } = useCart();
-  
-  const [product, setProduct] = useState<Product | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [quantity, setQuantity] = useState(1);
-  const [adding, setAdding] = useState(false);
+// This page uses ISR with revalidation
+export const revalidate = 300 // Revalidate every 5 minutes
 
-  useEffect(() => {
-    if (variantId) {
-      fetchProduct();
-    }
-  }, [variantId]);
-
-  const fetchProduct = async () => {
-    try {
-      const response = await fetch(`/api/products/${variantId}`);
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to fetch product');
-      }
-      
-      setProduct(data.product);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAddToCart = async () => {
-    if (!product) return;
+async function ProductDetails({ id }: { id: string }) {
+  try {
+    const product = await getCachedProduct(id)
     
-    try {
-      setAdding(true);
-      setError('');
-      await addToCart(variantId, undefined, quantity);
-      router.push('/cart');
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setAdding(false);
+    if (!product) {
+      notFound()
     }
-  };
-
-  const totalPrice = product 
-    ? (parseFloat(product.product_type.base_price.toString()) + parseFloat(product.price_modifier.toString())) * quantity
-    : 0;
-
-  if (loading) {
+    
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-4xl mb-4">📱</div>
-          <p className="text-gray-600">Loading product...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error || !product) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Card className="max-w-md w-full mx-4">
-          <CardContent className="p-8 text-center">
-            <div className="text-6xl mb-4">❌</div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">
-              Product not found
-            </h2>
-            <p className="text-gray-600 mb-6">{error || 'This product does not exist'}</p>
-            <Link href="/products">
-              <Button className="h-11">Browse Products</Button>
-            </Link>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  const inStock = product.stock_quantity > 0;
-  const unitPrice = parseFloat(product.product_type.base_price.toString()) + parseFloat(product.price_modifier.toString());
-
-  return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Mobile-First Header */}
-      <header className="bg-white shadow-sm border-b sticky top-0 z-10">
-        <div className="px-4 py-4 sm:px-6">
-          <div className="flex items-center justify-between">
-            <Link href="/products">
-              <Button variant="outline" size="sm">← Back</Button>
-            </Link>
-            <Link href="/cart">
-              <Button variant="outline" size="sm">🛒 Cart</Button>
-            </Link>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Product Images */}
+        <div className="space-y-4">
+          <div className="relative aspect-square overflow-hidden rounded-lg">
+            <Image
+              src={product.image_url}
+              alt={product.name}
+              fill
+              className="object-cover"
+              priority
+              sizes="(max-width: 768px) 100vw, 50vw"
+            />
           </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="px-4 py-6 sm:px-6 max-w-6xl mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           
-          {/* Product Image */}
-          <div className="aspect-square bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg relative overflow-hidden">
-            {product.image_url ? (
-              <img
-                src={product.image_url}
-                alt={`${product.model.brand.name} ${product.model.name} - ${product.color_name}`}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <>
-                {product.color_hex && (
-                  <div
-                    className="absolute inset-0 opacity-20"
-                    style={{ backgroundColor: product.color_hex }}
-                  />
-                )}
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="text-9xl">📱</div>
-                </div>
-              </>
-            )}
-            {!inStock && (
-              <div className="absolute top-4 right-4 bg-red-500 text-white px-4 py-2 rounded-lg font-semibold">
-                Out of Stock
-              </div>
-            )}
+          {/* Additional images would go here */}
+        </div>
+        
+        {/* Product Info */}
+        <div className="space-y-6">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">{product.name}</h1>
+            <p className="text-2xl font-bold text-green-600 mt-2">
+              ${product.price.toFixed(2)}
+            </p>
           </div>
-
-          {/* Product Info */}
-          <div className="space-y-6">
+          
+          {product.description && (
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">
-                {product.model.brand.name} {product.model.name}
-              </h1>
-              <p className="text-xl text-gray-600 mt-2">
-                {product.product_type.name} Case
-              </p>
+              <h3 className="text-lg font-semibold mb-2">Description</h3>
+              <p className="text-gray-600">{product.description}</p>
             </div>
-
-            {/* Price */}
-            <div className="border-t border-b py-4">
-              <div className="flex items-baseline gap-2">
-                <span className="text-4xl font-bold text-gray-900">
-                  ${unitPrice.toFixed(2)}
-                </span>
-                <span className="text-gray-500">per case</span>
+          )}
+          
+          {/* Variants would go here */}
+          
+          <div className="space-y-4">
+            <Button size="lg" className="w-full">
+              Add to Cart
+            </Button>
+            <Button variant="outline" size="lg" className="w-full">
+              Buy Now
+            </Button>
+          </div>
+          
+          {/* Additional product details */}
+          <div className="border-t pt-6">
+            <h3 className="text-lg font-semibold mb-4">Product Details</h3>
+            <dl className="space-y-2">
+              <div className="flex justify-between">
+                <dt className="text-gray-600">Category</dt>
+                <dd className="font-medium">{product.category}</dd>
               </div>
-            </div>
-
-            {/* Color */}
-            <div>
-              <h3 className="font-semibold text-gray-900 mb-2">Color</h3>
-              <div className="flex items-center gap-3">
-                {product.color_hex && (
-                  <div
-                    className="w-12 h-12 rounded-lg border-2 border-gray-300"
-                    style={{ backgroundColor: product.color_hex }}
-                  />
-                )}
-                <span className="text-lg text-gray-700">{product.color_name}</span>
+              <div className="flex justify-between">
+                <dt className="text-gray-600">Material</dt>
+                <dd className="font-medium">Premium Silicone</dd>
               </div>
-            </div>
-
-            {/* Description */}
-            {product.product_type.description && (
-              <div>
-                <h3 className="font-semibold text-gray-900 mb-2">Description</h3>
-                <p className="text-gray-700">{product.product_type.description}</p>
+              <div className="flex justify-between">
+                <dt className="text-gray-600">Compatibility</dt>
+                <dd className="font-medium">Universal</dd>
               </div>
-            )}
-
-            {/* Material Properties */}
-            {product.product_type.material_properties && (
-              <div>
-                <h3 className="font-semibold text-gray-900 mb-2">Material Properties</h3>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  {Object.entries(product.product_type.material_properties).map(([key, value]) => (
-                    <div key={key} className="flex justify-between">
-                      <span className="text-gray-600 capitalize">{key.replace(/_/g, ' ')}:</span>
-                      <span className="font-medium text-gray-900 capitalize">{value as string}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Model Info */}
-            <div>
-              <h3 className="font-semibold text-gray-900 mb-2">Model Information</h3>
-              <div className="space-y-1 text-sm">
-                {product.model.model_number && (
-                  <p className="text-gray-700">Model: {product.model.model_number}</p>
-                )}
-                {product.model.screen_size && (
-                  <p className="text-gray-700">Screen Size: {product.model.screen_size}"</p>
-                )}
-              </div>
-            </div>
-
-            {/* Stock Status */}
-            <div>
-              <p className={`text-sm font-medium ${inStock ? 'text-green-600' : 'text-red-600'}`}>
-                {inStock ? `${product.stock_quantity} in stock` : 'Out of stock'}
-              </p>
-            </div>
-
-            {/* Quantity & Add to Cart */}
-            {inStock && (
-              <Card>
-                <CardContent className="p-4 space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Quantity
-                    </label>
-                    <div className="flex items-center border border-gray-300 rounded-lg w-32">
-                      <button
-                        onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                        className="px-4 py-3 hover:bg-gray-100 transition-colors"
-                      >
-                        −
-                      </button>
-                      <input
-                        type="number"
-                        value={quantity}
-                        onChange={(e) => {
-                          const val = parseInt(e.target.value);
-                          if (val > 0 && val <= product.stock_quantity) {
-                            setQuantity(val);
-                          }
-                        }}
-                        className="w-full text-center border-0 border-x py-3"
-                        min="1"
-                        max={product.stock_quantity}
-                      />
-                      <button
-                        onClick={() => setQuantity(Math.min(product.stock_quantity, quantity + 1))}
-                        className="px-4 py-3 hover:bg-gray-100 transition-colors"
-                      >
-                        +
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between pt-2 border-t">
-                    <span className="text-lg font-semibold text-gray-900">Total:</span>
-                    <span className="text-2xl font-bold text-blue-600">
-                      ${totalPrice.toFixed(2)}
-                    </span>
-                  </div>
-
-                  {error && (
-                    <div className="bg-red-50 border border-red-200 text-red-800 px-3 py-2 rounded text-sm">
-                      {error}
-                    </div>
-                  )}
-
-                  <Button
-                    onClick={handleAddToCart}
-                    disabled={adding}
-                    className="w-full h-12 text-base"
-                  >
-                    {adding ? 'Adding...' : 'Add to Cart'}
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
+            </dl>
           </div>
         </div>
+      </div>
+    )
+  } catch (error) {
+    console.error('Failed to load product:', error)
+    notFound()
+  }
+}
 
-        {/* Related Products */}
-        <div className="mt-8">
-          <RelatedProducts
-            variantId={variantId}
-            limit={4}
-            onAddToCart={async (vid) => {
-              try {
-                await addToCart(vid);
-                router.push('/cart');
-              } catch (err: any) {
-                console.error('Failed to add to cart:', err);
-              }
-            }}
-          />
+async function RelatedProducts({ productId }: { productId: string }) {
+  try {
+    const relatedProducts = await getCachedRelatedProducts(productId)
+    
+    if (!relatedProducts || relatedProducts.length === 0) {
+      return null
+    }
+    
+    return (
+      <div className="mt-16">
+        <h2 className="text-2xl font-bold text-gray-900 mb-6">Related Products</h2>
+        <ProductGrid products={relatedProducts} />
+      </div>
+    )
+  } catch (error) {
+    console.error('Failed to load related products:', error)
+    return null
+  }
+}
+
+export default async function ProductPage({ params }: ProductPageProps) {
+  const { id } = await params
+  
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <Suspense fallback={
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="aspect-square bg-gray-200 rounded-lg animate-pulse" />
+          <div className="space-y-4">
+            <div className="h-8 bg-gray-200 rounded animate-pulse" />
+            <div className="h-6 bg-gray-200 rounded w-24 animate-pulse" />
+            <div className="h-4 bg-gray-200 rounded animate-pulse" />
+            <div className="h-4 bg-gray-200 rounded w-3/4 animate-pulse" />
+            <div className="h-12 bg-gray-200 rounded animate-pulse" />
+          </div>
         </div>
-      </main>
+      }>
+        <ProductDetails id={id} />
+      </Suspense>
+      
+      <Suspense fallback={
+        <div className="mt-16">
+          <div className="h-8 bg-gray-200 rounded w-48 animate-pulse mb-6" />
+          <ProductGridSkeleton count={4} />
+        </div>
+      }>
+        <RelatedProducts productId={id} />
+      </Suspense>
     </div>
-  );
+  )
+}
+
+// Generate static params for popular products (optional)
+export async function generateStaticParams() {
+  try {
+    // This would typically fetch popular product IDs
+    // For now, return empty array to generate on-demand
+    return []
+  } catch (error) {
+    console.error('Failed to generate static params:', error)
+    return []
+  }
+}
+
+// Metadata for SEO
+export async function generateMetadata({ params }: ProductPageProps) {
+  try {
+    const { id } = await params
+    const product = await getCachedProduct(id)
+    
+    if (!product) {
+      return {
+        title: 'Product Not Found | Sunlight',
+        description: 'The requested product could not be found.',
+      }
+    }
+    
+    return {
+      title: `${product.name} | Sunlight`,
+      description: product.description || `Shop ${product.name} - Premium phone case with excellent protection and style.`,
+      openGraph: {
+        title: product.name,
+        description: product.description,
+        images: [product.image_url],
+      },
+    }
+  } catch {
+    return {
+      title: 'Product | Sunlight',
+      description: 'Premium phone cases with excellent protection and style.',
+    }
+  }
 }

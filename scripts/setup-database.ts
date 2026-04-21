@@ -356,4 +356,3 @@ export { setupDatabase };
 if (require.main === module) {
     setupDatabase();
 }
-`;

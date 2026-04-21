@@ -7,7 +7,7 @@
 
 'use client';
 
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 
 export interface CartItem {
   id: string;
@@ -47,6 +47,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [summary, setSummary] = useState<CartSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const initializedRef = useRef(false);
 
   const refreshCart = useCallback(async () => {
     try {
@@ -183,6 +184,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   // Load cart on mount
   useEffect(() => {
+    if (initializedRef.current) return;
+    initializedRef.current = true;
     refreshCart();
   }, [refreshCart]);
 
