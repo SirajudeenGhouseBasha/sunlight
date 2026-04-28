@@ -11,7 +11,7 @@ import { createClient } from '@/src/lib/supabase/server';
 // GET /api/orders/[id] - Get order details
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createClient();
@@ -26,7 +26,7 @@ export async function GET(
       );
     }
     
-    const { id } = params;
+    const { id } = await params;
     
     // Fetch order with items
     const { data: order, error: orderError } = await supabase
@@ -81,7 +81,7 @@ export async function GET(
 // PUT /api/orders/[id] - Update order (admin only for status updates)
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createClient();
@@ -110,7 +110,7 @@ export async function PUT(
       );
     }
     
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
     const { status, payment_status, tracking_number, notes } = body;
     

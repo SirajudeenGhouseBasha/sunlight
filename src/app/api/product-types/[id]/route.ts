@@ -12,11 +12,11 @@ import { requireAdmin } from '@/src/lib/auth/session';
 // GET /api/product-types/[id] - Get specific product type
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createClient();
-    const { id } = params;
+    const { id } = await params;
     
     const { data: product_type, error } = await supabase
       .from('product_types')
@@ -50,14 +50,14 @@ export async function GET(
 // PUT /api/product-types/[id] - Update specific product type (Admin only)
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Require admin authentication
     await requireAdmin();
     
     const supabase = await createClient();
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
     
     const { name, description, material_properties, base_price, is_active } = body;
@@ -134,14 +134,14 @@ export async function PUT(
 // DELETE /api/product-types/[id] - Delete specific product type (Admin only)
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Require admin authentication
     await requireAdmin();
     
     const supabase = await createClient();
-    const { id } = params;
+    const { id } = await params;
     
     // Check if product type has associated variants
     const { data: variants, error: variantsError } = await supabase

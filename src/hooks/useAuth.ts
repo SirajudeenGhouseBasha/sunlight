@@ -7,7 +7,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { User, Session, AuthChangeEvent } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase/client';
 import { 
@@ -66,6 +66,35 @@ export const useAuth = (): UseAuthReturn => {
   const [error, setError] = useState<string | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(false);
+  const profileRequestRef = useRef<string | null>(null);
+  const lastLoadedProfileUserIdRef = useRef<string | null>(null);
+
+  // Load user profile
+  const loadUserProfile = useCallback(async (userId: string, force = false) => {
+    if (!force) {
+      if (profileRequestRef.current === userId) return;
+      if (lastLoadedProfileUserIdRef.current === userId) return;
+    }
+
+    profileRequestRef.current = userId;
+    setLoadingProfile(true);
+    try {
+      const { profile: userProfile, error: profileError } = await getUserProfile(userId);
+      
+      if (profileError) {
+        console.error('Error loading profile:', profileError);
+        // Don't set error for profile loading failures
+      } else {
+        setProfile(userProfile);
+        lastLoadedProfileUserIdRef.current = userId;
+      }
+    } catch (err) {
+      console.error('Error loading profile:', err);
+    } finally {
+      profileRequestRef.current = null;
+      setLoadingProfile(false);
+    }
+  }, []);
 
   // Initialize auth state
   useEffect(() => {
@@ -83,9 +112,9 @@ export const useAuth = (): UseAuthReturn => {
           setSession(session);
           setUser(session?.user as AuthUser || null);
           
-          // Load user profile if authenticated
+          // Load profile in background to keep UI thread responsive
           if (session?.user) {
-            await loadUserProfile(session.user.id);
+            void loadUserProfile(session.user.id);
           }
         }
       } catch (err) {
@@ -104,10 +133,12 @@ export const useAuth = (): UseAuthReturn => {
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event: AuthChangeEvent, session: Session | null) => {
+      (event: AuthChangeEvent, session: Session | null) => {
         if (!mounted) return;
 
-        console.log('Auth state changed:', event, session?.user?.id);
+        if (process.env.NODE_ENV === 'development') {
+          console.debug('Auth state changed:', event, session?.user?.id);
+        }
         
         setSession(session);
         setUser(session?.user as AuthUser || null);
@@ -115,20 +146,22 @@ export const useAuth = (): UseAuthReturn => {
 
         // Handle different auth events
         switch (event) {
+          case 'INITIAL_SESSION':
           case 'SIGNED_IN':
             if (session?.user) {
-              await loadUserProfile(session.user.id);
+              void loadUserProfile(session.user.id);
             }
             break;
           case 'SIGNED_OUT':
             setProfile(null);
+            lastLoadedProfileUserIdRef.current = null;
             break;
           case 'TOKEN_REFRESHED':
-            // Session refreshed successfully
+            // Avoid expensive profile refresh on token refresh
             break;
           case 'USER_UPDATED':
             if (session?.user) {
-              await loadUserProfile(session.user.id);
+              void loadUserProfile(session.user.id, true);
             }
             break;
         }
@@ -139,26 +172,7 @@ export const useAuth = (): UseAuthReturn => {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, []);
-
-  // Load user profile
-  const loadUserProfile = useCallback(async (userId: string) => {
-    setLoadingProfile(true);
-    try {
-      const { profile: userProfile, error: profileError } = await getUserProfile(userId);
-      
-      if (profileError) {
-        console.error('Error loading profile:', profileError);
-        // Don't set error for profile loading failures
-      } else {
-        setProfile(userProfile);
-      }
-    } catch (err) {
-      console.error('Error loading profile:', err);
-    } finally {
-      setLoadingProfile(false);
-    }
-  }, []);
+  }, [loadUserProfile]);
 
   // Authentication methods
   const handleSignUp = useCallback(async (

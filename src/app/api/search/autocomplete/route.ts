@@ -7,6 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/src/lib/supabase/server';
+import { createSearchResponse } from '@/src/lib/cache/http-cache';
 
 export async function GET(request: NextRequest) {
   try {
@@ -20,34 +21,35 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient();
     const searchPattern = `%${query}%`;
 
-    // Search brands
-    const { data: brands } = await supabase
-      .from('brands')
-      .select('id, name')
-      .ilike('name', searchPattern)
-      .eq('is_active', true)
-      .limit(3);
+    const [brandsResult, modelsResult, productsResult] = await Promise.all([
+      supabase
+        .from('brands')
+        .select('id, name')
+        .ilike('name', searchPattern)
+        .eq('is_active', true)
+        .limit(3),
+      supabase
+        .from('models')
+        .select('id, name, brand:brands(name)')
+        .ilike('name', searchPattern)
+        .eq('is_active', true)
+        .limit(3),
+      supabase
+        .from('variants')
+        .select(`
+          id,
+          color_name,
+          model:models(id, name, brand:brands(name)),
+          product_type:product_types(name)
+        `)
+        .or(`color_name.ilike.%${query}%`)
+        .eq('is_active', true)
+        .limit(4),
+    ]);
 
-    // Search models
-    const { data: models } = await supabase
-      .from('models')
-      .select('id, name, brand:brands(name)')
-      .ilike('name', searchPattern)
-      .eq('is_active', true)
-      .limit(3);
-
-    // Search products (variants with full details)
-    const { data: products } = await supabase
-      .from('variants')
-      .select(`
-        id,
-        color_name,
-        model:models(id, name, brand:brands(name)),
-        product_type:product_types(name)
-      `)
-      .or(`color_name.ilike.%${query}%`)
-      .eq('is_active', true)
-      .limit(4);
+    const brands = brandsResult.data;
+    const models = modelsResult.data;
+    const products = productsResult.data;
 
     // Format suggestions
     const suggestions = [
@@ -71,7 +73,7 @@ export async function GET(request: NextRequest) {
       })),
     ];
 
-    return NextResponse.json({ suggestions });
+    return createSearchResponse({ suggestions });
   } catch (error) {
     console.error('Autocomplete error:', error);
     return NextResponse.json(

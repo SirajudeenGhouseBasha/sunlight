@@ -11,7 +11,7 @@ import { createClient } from '@/src/lib/supabase/server';
 // PUT /api/cart/[id] - Update cart item
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createClient();
@@ -26,7 +26,7 @@ export async function PUT(
       );
     }
     
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
     const { quantity, customization_options } = body;
     
@@ -102,7 +102,7 @@ export async function PUT(
 // DELETE /api/cart/[id] - Remove cart item
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createClient();
@@ -117,7 +117,7 @@ export async function DELETE(
       );
     }
     
-    const { id } = params;
+    const { id } = await params;
     
     const { error } = await supabase
       .from('cart_items')

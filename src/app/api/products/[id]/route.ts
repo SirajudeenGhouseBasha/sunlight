@@ -10,25 +10,10 @@ import { createClient } from '@/src/lib/supabase/server';
 // GET /api/products/[id] - Get single product (variant)
 export async function GET(
   request: NextRequest,
-  context: any
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Handle both sync and async params
-    let id: string;
-    if (context.params && typeof context.params.then === 'function') {
-      const params = await context.params;
-      id = params.id;
-    } else {
-      id = context.params?.id;
-    }
-    
-    if (!id) {
-      return NextResponse.json(
-        { error: 'No ID provided' },
-        { status: 400 }
-      );
-    }
-    
+    const { id } = await params;
     const supabase = await createClient();
     
     const { data: variant, error } = await supabase
