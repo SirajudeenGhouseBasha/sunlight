@@ -25,6 +25,7 @@ export function MainNav() {
 
   const navLinks = [
     { href: '/products', label: 'Browse', icon: '🛍️' },
+    { href: '/custom-case', label: 'Customize', icon: '✨' },
     { href: '/cart', label: 'Cart', icon: '🛒' },
     { href: '/orders', label: 'Orders', icon: '📦' },
     { href: '/dashboard/designs', label: 'My Designs', icon: '🎨', auth: true },

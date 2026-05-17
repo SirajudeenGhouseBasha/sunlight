@@ -13,7 +13,7 @@ import { Input } from '@/src/components/ui/input';
 import { Label } from '@/src/components/ui/label';
 import { Textarea } from '@/src/components/ui/textarea';
 import { Select, SelectOption } from '@/src/components/ui/select';
-import { MaterialProperties } from '@/types/products';
+import { MaterialProperties } from '@/src/types/products';
 
 interface CreateProductTypeFormProps {
   onSuccess?: () => void;

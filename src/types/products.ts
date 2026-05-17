@@ -44,6 +44,9 @@ export interface ProductVariant {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  image_url?: string;
+  mask_image_url?: string;
+  additional_images?: string[];
   
   // Relationships
   model?: PhoneModel;
@@ -171,7 +174,7 @@ export const PRODUCT_TYPES = {
       weight: 'medium',
       grip: 'medium',
       scratch_resistance: 'high',
-      drop_protection: 'enhanced',
+      drop_protection: 'standard',
     } as MaterialProperties,
     base_price: 24.99,
   },

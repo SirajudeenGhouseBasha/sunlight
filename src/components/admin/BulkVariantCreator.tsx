@@ -18,15 +18,14 @@ interface BulkVariantCreatorProps {
   onSuccess?: () => void;
 }
 
+import { useBrandsAndModels } from '@/src/hooks/useBrandsAndModels';
+
 export function BulkVariantCreator({ onSuccess }: BulkVariantCreatorProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const [brands, setBrands] = useState<Brand[]>([]);
-  const [models, setModels] = useState<PhoneModel[]>([]);
   const [productTypes, setProductTypes] = useState<ProductType[]>([]);
-  const [filteredModels, setFilteredModels] = useState<PhoneModel[]>([]);
 
   const [formData, setFormData] = useState({
     brand_id: '',
@@ -35,51 +34,36 @@ export function BulkVariantCreator({ onSuccess }: BulkVariantCreatorProps) {
     selected_colors: [] as string[],
   });
 
-  // Fetch initial data
+  const { brands, filteredModels } = useBrandsAndModels(formData.brand_id);
+
+  // Fetch product types on mount
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchProductTypes = async () => {
       try {
-        const [brandsRes, modelsRes, productTypesRes] = await Promise.all([
-          fetch('/api/brands'),
-          fetch('/api/models'),
-          fetch('/api/product-types?active=true'),
-        ]);
-
-        const [brandsData, modelsData, productTypesData] = await Promise.all([
-          brandsRes.json(),
-          modelsRes.json(),
-          productTypesRes.json(),
-        ]);
-
-        setBrands(brandsData.brands || []);
-        setModels(modelsData.models || []);
+        const productTypesRes = await fetch('/api/product-types?active=true');
+        const productTypesData = await productTypesRes.json();
         setProductTypes(productTypesData.product_types || []);
       } catch (err) {
-        setError('Failed to load form data');
+        setError('Failed to load product types');
       }
     };
 
-    fetchData();
+    fetchProductTypes();
   }, []);
 
-  // Filter models by selected brand
+  // Filter models by selected brand & reset selected models if not in the new filtered models list
   useEffect(() => {
     if (formData.brand_id) {
-      const filtered = models.filter(model => model.brand_id === formData.brand_id);
-      setFilteredModels(filtered);
-      
-      // Reset model selection if current models are not in filtered list
-      const validModelIds = filtered.map(m => m.id);
+      const validModelIds = filteredModels.map(m => m.id);
       const filteredSelectedIds = formData.selected_model_ids.filter(id => validModelIds.includes(id));
       
       if (filteredSelectedIds.length !== formData.selected_model_ids.length) {
         setFormData(prev => ({ ...prev, selected_model_ids: filteredSelectedIds }));
       }
     } else {
-      setFilteredModels([]);
       setFormData(prev => ({ ...prev, selected_model_ids: [] }));
     }
-  }, [formData.brand_id, models]);
+  }, [formData.brand_id, filteredModels, formData.selected_model_ids]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

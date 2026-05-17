@@ -48,8 +48,8 @@ export async function GET(request: NextRequest) {
     ]);
 
     const brands = brandsResult.data;
-    const models = modelsResult.data;
-    const products = productsResult.data;
+    const models = modelsResult.data as any[];
+    const products = productsResult.data as any[];
 
     // Format suggestions
     const suggestions = [

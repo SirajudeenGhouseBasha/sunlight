@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useCallback } from 'react'
+// @ts-expect-error - react-window is not fully compatible with React 19 types
 import { FixedSizeList as List } from 'react-window'
 import { useInfiniteProducts } from '@/src/lib/queries/products'
 import { ProductCard } from '@/src/components/optimized/ProductCard'

@@ -10,7 +10,7 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/src/components/ui/button';
 import { Card, CardContent } from '@/src/components/ui/card';
-import { ProductType } from '@/types/products';
+import { ProductType } from '@/src/types/products';
 
 export function ProductTypesTable() {
   const [productTypes, setProductTypes] = useState<ProductType[]>([]);

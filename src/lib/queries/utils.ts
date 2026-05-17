@@ -1,6 +1,5 @@
 import { QueryClient } from '@tanstack/react-query'
-import { productKeys } from './products'
-import { cartKeys } from './cart'
+import { QUERY_KEYS } from './config'
 
 /**
  * Utility functions for cache management and query invalidation
@@ -10,21 +9,21 @@ import { cartKeys } from './cart'
 export const invalidateProductCache = (queryClient: QueryClient, productId?: string) => {
   if (productId) {
     // Invalidate specific product
-    queryClient.invalidateQueries({ queryKey: productKeys.detail(productId) })
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.productDetail(productId) })
   } else {
     // Invalidate all product queries
-    queryClient.invalidateQueries({ queryKey: productKeys.all })
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.products })
   }
 }
 
 export const invalidateCartCache = (queryClient: QueryClient) => {
-  queryClient.invalidateQueries({ queryKey: cartKeys.all })
+  queryClient.invalidateQueries({ queryKey: QUERY_KEYS.cart })
 }
 
 // Prefetch utilities for performance optimization
 export const prefetchProductList = (queryClient: QueryClient, category?: string) => {
   return queryClient.prefetchQuery({
-    queryKey: productKeys.list(category),
+    queryKey: QUERY_KEYS.productList({ category }),
     queryFn: async () => {
       const params = new URLSearchParams()
       if (category) params.append('category', category)
@@ -39,7 +38,7 @@ export const prefetchProductList = (queryClient: QueryClient, category?: string)
 
 export const prefetchFeaturedProducts = (queryClient: QueryClient) => {
   return queryClient.prefetchQuery({
-    queryKey: productKeys.featured(),
+    queryKey: [...QUERY_KEYS.products, 'featured'],
     queryFn: async () => {
       const response = await fetch('/api/products/featured')
       if (!response.ok) throw new Error('Failed to fetch featured products')
@@ -139,7 +138,7 @@ export const getCacheSize = (queryClient: QueryClient) => {
       queryKey: query.queryKey,
       state: query.state.status,
       dataUpdatedAt: query.state.dataUpdatedAt,
-      staleTime: query.options.staleTime,
+      staleTime: (query.options as any).staleTime,
     })),
   }
 }

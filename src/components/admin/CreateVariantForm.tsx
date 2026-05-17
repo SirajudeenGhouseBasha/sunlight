@@ -12,21 +12,20 @@ import { Button } from '@/src/components/ui/button';
 import { Input } from '@/src/components/ui/input';
 import { Label } from '@/src/components/ui/label';
 import { Select, SelectOption } from '@/src/components/ui/select';
-import { ProductType, PhoneModel, Brand, COLORS } from '@/types/products';
+import { ProductType, PhoneModel, Brand, COLORS } from '@/src/types/products';
 
 interface CreateVariantFormProps {
   onSuccess?: () => void;
 }
+
+import { useBrandsAndModels } from '@/src/hooks/useBrandsAndModels';
 
 export function CreateVariantForm({ onSuccess }: CreateVariantFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const [brands, setBrands] = useState<Brand[]>([]);
-  const [models, setModels] = useState<PhoneModel[]>([]);
   const [productTypes, setProductTypes] = useState<ProductType[]>([]);
-  const [filteredModels, setFilteredModels] = useState<PhoneModel[]>([]);
 
   const [formData, setFormData] = useState({
     brand_id: '',
@@ -38,48 +37,33 @@ export function CreateVariantForm({ onSuccess }: CreateVariantFormProps) {
     stock_quantity: '0',
   });
 
-  // Fetch initial data
+  const { brands, filteredModels } = useBrandsAndModels(formData.brand_id);
+
+  // Fetch product types on mount
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchProductTypes = async () => {
       try {
-        const [brandsRes, modelsRes, productTypesRes] = await Promise.all([
-          fetch('/api/brands'),
-          fetch('/api/models'),
-          fetch('/api/product-types?active=true'),
-        ]);
-
-        const [brandsData, modelsData, productTypesData] = await Promise.all([
-          brandsRes.json(),
-          modelsRes.json(),
-          productTypesRes.json(),
-        ]);
-
-        setBrands(brandsData.brands || []);
-        setModels(modelsData.models || []);
+        const productTypesRes = await fetch('/api/product-types?active=true');
+        const productTypesData = await productTypesRes.json();
         setProductTypes(productTypesData.product_types || []);
       } catch (err) {
-        setError('Failed to load form data');
+        setError('Failed to load product types');
       }
     };
 
-    fetchData();
+    fetchProductTypes();
   }, []);
 
-  // Filter models by selected brand
+  // Reset model selection if brand changes
   useEffect(() => {
     if (formData.brand_id) {
-      const filtered = models.filter(model => model.brand_id === formData.brand_id);
-      setFilteredModels(filtered);
-      
-      // Reset model selection if current model is not in filtered list
-      if (formData.model_id && !filtered.find(m => m.id === formData.model_id)) {
+      if (formData.model_id && !filteredModels.find(m => m.id === formData.model_id)) {
         setFormData(prev => ({ ...prev, model_id: '' }));
       }
     } else {
-      setFilteredModels([]);
       setFormData(prev => ({ ...prev, model_id: '' }));
     }
-  }, [formData.brand_id, models]);
+  }, [formData.brand_id, filteredModels, formData.model_id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
