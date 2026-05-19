@@ -7,7 +7,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/card';
 import { Button } from '@/src/components/ui/button';
 import { Input } from '@/src/components/ui/input';
@@ -18,7 +18,7 @@ import { useCart } from '@/src/context/CartContext';
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { cartItems, summary, clearCart } = useCart();
+  const { cartItems, summary, clearCart, refreshCart, loading: cartLoading } = useCart();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
@@ -40,6 +40,10 @@ export default function CheckoutPage() {
   
   const [sameAsShipping, setSameAsShipping] = useState(true);
   const [notes, setNotes] = useState('');
+
+  useEffect(() => {
+    refreshCart();
+  }, [refreshCart]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,6 +76,17 @@ export default function CheckoutPage() {
       setLoading(false);
     }
   };
+
+  if (cartLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-4xl mb-4">🛒</div>
+          <p className="text-gray-600">Loading cart...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (cartItems.length === 0) {
     return (

@@ -53,3 +53,80 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+// POST /api/designs/templates - Create new template (Admin only)
+export async function POST(request: NextRequest) {
+  try {
+    const supabase = await createClient();
+    
+    // Check if user is admin
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+    
+    // Verify admin role
+    const { data: userData } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+    
+    if (!userData || userData.role !== 'admin') {
+      return NextResponse.json(
+        { error: 'Forbidden - Admin access required' },
+        { status: 403 }
+      );
+    }
+    
+    const body = await request.json();
+    const {
+      name,
+      category,
+      thumbnail_url,
+      is_featured,
+    } = body;
+    
+    if (!name || !category) {
+      return NextResponse.json(
+        { error: 'Name and category are required' },
+        { status: 400 }
+      );
+    }
+    
+    // Create template
+    const { data: template, error } = await supabase
+      .from('designs')
+      .insert({
+        name,
+        category,
+        thumbnail_url: thumbnail_url || null,
+        is_featured: is_featured || false,
+        is_template: true,
+        is_active: true,
+        usage_count: 0,
+      })
+      .select()
+      .single();
+    
+    if (error) {
+      console.error('Error creating template:', error);
+      return NextResponse.json(
+        { error: 'Failed to create template' },
+        { status: 500 }
+      );
+    }
+    
+    return NextResponse.json({ template }, { status: 201 });
+  } catch (error) {
+    console.error('Create template error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}

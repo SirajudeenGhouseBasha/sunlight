@@ -7,7 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/src/lib/supabase/server';
-import { requireAdmin } from '@/src/lib/auth/session';
+import { validateAdminAccess } from '@/src/lib/auth/api-auth';
 
 // GET /api/product-types/[id] - Get specific product type
 export async function GET(
@@ -53,8 +53,11 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Require admin authentication
-    await requireAdmin();
+    // Validate admin authentication
+    const auth = await validateAdminAccess();
+    if (!auth.isValid) {
+      return auth.response;
+    }
     
     const supabase = await createClient();
     const { id } = await params;
@@ -109,6 +112,7 @@ export async function PUT(
         );
       }
       
+      console.error('Product type update error:', error);
       return NextResponse.json(
         { error: 'Failed to update product type' },
         { status: 500 }
@@ -117,13 +121,7 @@ export async function PUT(
     
     return NextResponse.json({ product_type });
   } catch (error) {
-    if (error instanceof Error && error.message.includes('unauthorized')) {
-      return NextResponse.json(
-        { error: 'Admin access required' },
-        { status: 403 }
-      );
-    }
-    
+    console.error('PUT /api/product-types/[id] error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -137,8 +135,11 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Require admin authentication
-    await requireAdmin();
+    // Validate admin authentication
+    const auth = await validateAdminAccess();
+    if (!auth.isValid) {
+      return auth.response;
+    }
     
     const supabase = await createClient();
     const { id } = await params;
@@ -151,6 +152,7 @@ export async function DELETE(
       .limit(1);
     
     if (variantsError) {
+      console.error('Variants check error:', variantsError);
       return NextResponse.json(
         { error: 'Failed to check product type dependencies' },
         { status: 500 }
@@ -177,6 +179,7 @@ export async function DELETE(
         );
       }
       
+      console.error('Product type delete error:', error);
       return NextResponse.json(
         { error: 'Failed to delete product type' },
         { status: 500 }
@@ -185,13 +188,7 @@ export async function DELETE(
     
     return NextResponse.json({ message: 'Product type deleted successfully' });
   } catch (error) {
-    if (error instanceof Error && error.message.includes('unauthorized')) {
-      return NextResponse.json(
-        { error: 'Admin access required' },
-        { status: 403 }
-      );
-    }
-    
+    console.error('DELETE /api/product-types/[id] error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

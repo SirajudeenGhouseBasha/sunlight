@@ -20,10 +20,6 @@ export const CACHE_REVALIDATE = {
 } as const
 
 async function getApiBaseUrl() {
-  if (process.env.NEXT_PUBLIC_API_URL) {
-    return process.env.NEXT_PUBLIC_API_URL
-  }
-
   try {
     const requestHeaders = await headers()
     const host = requestHeaders.get('host')
@@ -35,7 +31,14 @@ async function getApiBaseUrl() {
     // no request context (e.g. background cache warmers)
   }
 
-  return 'http://localhost:3003'
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    if (process.env.NEXT_PUBLIC_API_URL.includes('localhost')) {
+      return 'http://localhost:3000'
+    }
+    return process.env.NEXT_PUBLIC_API_URL
+  }
+
+  return 'http://localhost:3000'
 }
 
 // Generic cached function wrapper

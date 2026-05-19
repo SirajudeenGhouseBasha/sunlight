@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/src/lib/supabase/server';
+import { validateAdminAccess } from '@/src/lib/auth/api-auth';
 
 // GET /api/brands/[id] - Get single brand
 export async function GET(
@@ -44,34 +45,16 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Validate admin authentication
+    const auth = await validateAdminAccess();
+    if (!auth.isValid) {
+      return auth.response;
+    }
+    
     const { id } = await params;
     const supabase = await createClient();
-    
-    // Check if user is admin
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-    
-    // Verify admin role
-    const { data: userData } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-    
-    if (!userData || userData.role !== 'admin') {
-      return NextResponse.json(
-        { error: 'Forbidden - Admin access required' },
-        { status: 403 }
-      );
-    }
-    
     const body = await request.json();
+    
     const { name, description, logo_url } = body;
     
     if (!name) {
@@ -104,6 +87,7 @@ export async function PATCH(
         );
       }
       
+      console.error('Brand update error:', error);
       return NextResponse.json(
         { error: 'Failed to update brand' },
         { status: 500 }
@@ -112,6 +96,7 @@ export async function PATCH(
     
     return NextResponse.json({ brand });
   } catch (error) {
+    console.error('PATCH /api/brands/[id] error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -125,32 +110,14 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Validate admin authentication
+    const auth = await validateAdminAccess();
+    if (!auth.isValid) {
+      return auth.response;
+    }
+    
     const { id } = await params;
     const supabase = await createClient();
-    
-    // Check if user is admin
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-    
-    // Verify admin role
-    const { data: userData } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-    
-    if (!userData || userData.role !== 'admin') {
-      return NextResponse.json(
-        { error: 'Forbidden - Admin access required' },
-        { status: 403 }
-      );
-    }
     
     // Check if brand has associated models
     const { data: models, error: modelsError } = await supabase
@@ -160,6 +127,7 @@ export async function DELETE(
       .limit(1);
     
     if (modelsError) {
+      console.error('Models check error:', modelsError);
       return NextResponse.json(
         { error: 'Failed to check brand dependencies' },
         { status: 500 }
@@ -179,6 +147,7 @@ export async function DELETE(
       .eq('id', id);
     
     if (error) {
+      console.error('Brand delete error:', error);
       return NextResponse.json(
         { error: 'Failed to delete brand' },
         { status: 500 }
@@ -187,6 +156,7 @@ export async function DELETE(
     
     return NextResponse.json({ success: true });
   } catch (error) {
+    console.error('DELETE /api/brands/[id] error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

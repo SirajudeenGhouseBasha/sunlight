@@ -95,24 +95,27 @@ export async function GET(request: NextRequest) {
     }
     
     // Transform variants into product catalog format
-    const products = variants?.map(variant => ({
-      id: variant.id,
-      variant_id: variant.id,
-      name: `${variant.model.brand.name} ${variant.model.name}`,
-      brand: variant.model.brand,
-      model: variant.model,
-      product_type: variant.product_type,
-      color_name: variant.color_name,
-      color_hex: variant.color_hex,
-      price: parseFloat(variant.product_type.base_price) + parseFloat(variant.price_modifier),
-      base_price: parseFloat(variant.product_type.base_price),
-      price_modifier: parseFloat(variant.price_modifier),
-      stock_quantity: variant.stock_quantity,
-      in_stock: variant.stock_quantity > 0,
-      is_active: variant.is_active,
-      image_url: variant.image_url,
-      additional_images: variant.additional_images || [],
-    })) || [];
+    const products = variants?.map(variant => {
+      const v = variant as any;
+      return {
+        id: v.id,
+        variant_id: v.id,
+        name: `${v.model.brand.name} ${v.model.name}`,
+        brand: v.model.brand,
+        model: v.model,
+        product_type: v.product_type,
+        color_name: v.color_name,
+        color_hex: v.color_hex,
+        price: parseFloat(v.product_type.base_price) + parseFloat(v.price_modifier),
+        base_price: parseFloat(v.product_type.base_price),
+        price_modifier: parseFloat(v.price_modifier),
+        stock_quantity: v.stock_quantity,
+        in_stock: v.stock_quantity > 0,
+        is_active: v.is_active,
+        image_url: v.image_url,
+        additional_images: v.additional_images || [],
+      };
+    }) || [];
     
     return createProductResponse({
       products,

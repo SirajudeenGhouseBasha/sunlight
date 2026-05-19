@@ -69,26 +69,27 @@ export default function CartPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Mobile-First Header */}
-      <header className="bg-white shadow-sm border-b sticky top-0 z-10">
-        <div className="px-4 py-4 sm:px-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-xl font-bold text-gray-900">Shopping Cart</h1>
-              <p className="text-sm text-gray-600 mt-1">
-                {summary?.item_count || 0} {summary?.item_count === 1 ? 'item' : 'items'}
-              </p>
+    <div className="sunlight-atmosphere min-h-screen">
+      <div className="sunlight-atmosphere__content">
+        {/* Mobile-First Header */}
+        <header className="bg-white/30 backdrop-blur-md shadow-sm border-b border-black/5 sticky top-0 z-10">
+          <div className="px-4 py-4 sm:px-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-xl font-bold text-gray-900">Shopping Cart</h1>
+                <p className="text-sm text-gray-600 mt-1">
+                  {summary?.item_count || 0} {summary?.item_count === 1 ? 'item' : 'items'}
+                </p>
+              </div>
+              <Link href="/dashboard">
+                <Button variant="outline" size="sm">← Continue Shopping</Button>
+              </Link>
             </div>
-            <Link href="/dashboard">
-              <Button variant="outline" size="sm">← Continue Shopping</Button>
-            </Link>
           </div>
-        </div>
-      </header>
+        </header>
 
-      {/* Main Content */}
-      <main className="px-4 py-6 sm:px-6 max-w-6xl mx-auto">
+        {/* Main Content */}
+        <main className="px-4 py-6 sm:px-6 max-w-6xl mx-auto">
         <div className="space-y-4">
           
           {/* Error Message */}
@@ -100,7 +101,7 @@ export default function CartPage() {
 
           {/* Empty Cart */}
           {cartItems.length === 0 ? (
-            <Card>
+            <Card className="bg-white/28 backdrop-blur-md border-black/4">
               <CardContent className="p-8 text-center">
                 <div className="text-6xl mb-4">🛒</div>
                 <h2 className="text-xl font-semibold text-gray-900 mb-2">
@@ -134,7 +135,7 @@ export default function CartPage() {
                 </div>
 
                 {cartItems.map((item) => (
-                  <Card key={item.id}>
+                  <Card key={item.id} className="bg-white/28 backdrop-blur-md border-black/4">
                     <CardContent className="p-4">
                       <div className="flex gap-4">
                         {/* Design Preview */}
@@ -217,7 +218,7 @@ export default function CartPage() {
 
               {/* Order Summary */}
               <div className="lg:col-span-1">
-                <Card className="sticky top-24">
+                <Card className="sticky top-24 bg-white/28 backdrop-blur-md border-black/4">
                   <CardHeader>
                     <CardTitle>Order Summary</CardTitle>
                   </CardHeader>
@@ -256,6 +257,7 @@ export default function CartPage() {
           )}
         </div>
       </main>
+      </div>
     </div>
   );
 }

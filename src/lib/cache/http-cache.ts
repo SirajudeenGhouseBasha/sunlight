@@ -31,7 +31,7 @@ export const CACHE_CONTROL = {
 } as const
 
 // ETag generation helper
-export function generateETag(data: any): string {
+export function generateETag(data: unknown): string {
   const hash = require('crypto')
     .createHash('md5')
     .update(JSON.stringify(data))
@@ -48,7 +48,7 @@ export interface CacheOptions {
 }
 
 export function createCachedResponse(
-  data: any,
+  data: unknown,
   options: CacheOptions = {}
 ): NextResponse {
   const response = NextResponse.json(data)
@@ -97,7 +97,7 @@ export function checkIfNoneMatch(request: Request, etag: string): boolean {
 }
 
 // Response helpers for different cache scenarios
-export function createProductResponse(data: any, lastModified?: Date) {
+export function createProductResponse(data: unknown, lastModified?: Date) {
   return createCachedResponse(data, {
     cacheControl: CACHE_CONTROL.PRODUCTS,
     etag: true,
@@ -106,7 +106,7 @@ export function createProductResponse(data: any, lastModified?: Date) {
   })
 }
 
-export function createSearchResponse(data: any) {
+export function createSearchResponse(data: unknown) {
   return createCachedResponse(data, {
     cacheControl: CACHE_CONTROL.SEARCH,
     etag: true,
@@ -114,7 +114,7 @@ export function createSearchResponse(data: any) {
   })
 }
 
-export function createUserDataResponse(data: any) {
+export function createUserDataResponse(data: unknown) {
   return createCachedResponse(data, {
     cacheControl: CACHE_CONTROL.USER_DATA,
     etag: true,
@@ -122,7 +122,7 @@ export function createUserDataResponse(data: any) {
   })
 }
 
-export function createStaticResponse(data: any) {
+export function createStaticResponse(data: unknown) {
   return createCachedResponse(data, {
     cacheControl: CACHE_CONTROL.STATIC_ASSETS,
     etag: true,

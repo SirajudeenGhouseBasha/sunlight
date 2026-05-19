@@ -7,7 +7,40 @@
 
 'use client';
 
-import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+
+export interface CartItemVariant {
+  id: string;
+  name: string;
+  color_name: string;
+  color_hex?: string | null;
+  price_modifier: number;
+  stock_quantity: number;
+  is_active: boolean;
+  model: {
+    id: string;
+    name: string;
+    slug: string;
+    brand: {
+      id: string;
+      name: string;
+      slug: string;
+    };
+  };
+  product_type: {
+    id: string;
+    name: string;
+    slug: string;
+    base_price: number;
+  };
+}
+
+export interface CartItemDesign {
+  id: string;
+  name: string;
+  image_url: string;
+  thumbnail_url?: string | null;
+}
 
 export interface CartItem {
   id: string;
@@ -16,9 +49,9 @@ export interface CartItem {
   quantity: number;
   unit_price: number;
   total_price: number;
-  customization_options?: any;
-  variant?: any;
-  design?: any;
+  customization_options?: Record<string, unknown> | null;
+  variant?: CartItemVariant | null;
+  design?: CartItemDesign | null;
   created_at: string;
   updated_at: string;
 }
@@ -33,7 +66,7 @@ interface CartContextType {
   summary: CartSummary | null;
   loading: boolean;
   error: string | null;
-  addToCart: (variantId: string, designId?: string, quantity?: number, customization?: any) => Promise<void>;
+  addToCart: (variantId: string, designId?: string, quantity?: number, customization?: Record<string, unknown>) => Promise<void>;
   updateCartItem: (itemId: string, quantity: number) => Promise<void>;
   removeFromCart: (itemId: string) => Promise<void>;
   clearCart: () => Promise<void>;
@@ -45,9 +78,8 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 export function CartProvider({ children }: { children: ReactNode }) {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [summary, setSummary] = useState<CartSummary | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const initializedRef = useRef(false);
 
   const refreshCart = useCallback(async () => {
     try {
@@ -69,8 +101,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const data = await response.json();
       setCartItems(data.cart_items || []);
       setSummary(data.summary || null);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch cart');
       setCartItems([]);
       setSummary(null);
     } finally {
@@ -83,7 +115,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       variantId: string,
       designId?: string,
       quantity: number = 1,
-      customization?: any
+      customization?: Record<string, unknown>
     ) => {
       try {
         setError(null);
@@ -105,8 +137,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
         }
 
         await refreshCart();
-      } catch (err: any) {
-        setError(err.message);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An unknown error occurred');
         throw err;
       }
     },
@@ -130,8 +162,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
         }
 
         await refreshCart();
-      } catch (err: any) {
-        setError(err.message);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An unknown error occurred');
         throw err;
       }
     },
@@ -153,8 +185,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
         }
 
         await refreshCart();
-      } catch (err: any) {
-        setError(err.message);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An unknown error occurred');
         throw err;
       }
     },
@@ -176,18 +208,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
       setCartItems([]);
       setSummary(null);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An unknown error occurred');
       throw err;
     }
   }, []);
-
-  // Load cart on mount
-  useEffect(() => {
-    if (initializedRef.current) return;
-    initializedRef.current = true;
-    refreshCart();
-  }, [refreshCart]);
 
   const value: CartContextType = {
     cartItems,

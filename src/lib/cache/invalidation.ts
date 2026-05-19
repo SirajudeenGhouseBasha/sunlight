@@ -218,7 +218,7 @@ export function getCacheStats() {
 // Cache health check
 export function checkCacheHealth() {
   const stats = getCacheStats()
-  const issues = []
+  const issues: string[] = []
   
   // Check hit rates
   Object.entries(stats.hitRates).forEach(([cache, hitRate]) => {
