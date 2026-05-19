@@ -368,7 +368,7 @@ export function BrandsModule() {
       </div>
 
       {/* Data table with all production features */}
-      <ProductionDataTable<Brand>
+      <ProductionDataTable
         columns={columns}
         data={table.items}
         isLoading={table.isLoading}
@@ -415,7 +415,6 @@ export function BrandsModule() {
           brand={editingBrand}
           onSave={handleSaveBrand}
           onCancel={handleCloseModal}
-          isLoading={table.isPerformingAction}
         />
       </Modal>
     </div>

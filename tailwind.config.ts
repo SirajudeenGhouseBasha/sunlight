@@ -1,10 +1,8 @@
 import type { Config } from 'tailwindcss';
-import { heroui } from '@heroui/theme';
 
 const config: Config = {
   content: [
     './src/**/*.{js,ts,jsx,tsx,mdx}',
-    './node_modules/@heroui/theme/dist/**/*.{js,ts,jsx,tsx}',
   ],
   theme: {
     extend: {
@@ -105,54 +103,7 @@ const config: Config = {
     },
   },
   darkMode: 'class',
-  plugins: [
-    heroui({
-      themes: {
-        light: {
-          colors: {
-            background: '#ffffff',
-            foreground: '#000000',
-            primary: {
-              DEFAULT: '#ff6600',
-              foreground: '#ffffff',
-            },
-            secondary: {
-              DEFAULT: '#f5f5f5',
-              foreground: '#000000',
-            },
-            success: '#00cc66',
-            warning: '#ff6600',
-            danger: '#ff3333',
-            content1: '#ffffff',
-            content2: '#f5f5f5',
-            content3: '#e5e5e5',
-            content4: '#d4d4d4',
-          },
-        },
-        dark: {
-          colors: {
-            background: '#000000',
-            foreground: '#ffffff',
-            primary: {
-              DEFAULT: '#ff6600',
-              foreground: '#ffffff',
-            },
-            secondary: {
-              DEFAULT: '#262626',
-              foreground: '#ffffff',
-            },
-            success: '#00cc66',
-            warning: '#ff6600',
-            danger: '#ff3333',
-            content1: '#171717',
-            content2: '#262626',
-            content3: '#404040',
-            content4: '#525252',
-          },
-        },
-      },
-    }),
-  ],
+  plugins: [],
 };
 
 export default config;

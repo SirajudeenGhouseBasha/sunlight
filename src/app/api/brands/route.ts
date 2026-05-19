@@ -23,43 +23,74 @@ export async function GET(request: NextRequest) {
 
     const offset = (page - 1) * limit;
 
-    let query = supabase
+    // First, get the total count with all filters applied
+    let countQuery = supabase
       .from('brands')
-      .select('*', { count: 'planned' })
-      .order('name', { ascending: true })
-      .range(offset, offset + limit - 1);
+      .select('id', { count: 'exact', head: true });
 
-    // Apply filters
     if (search) {
-      query = query.ilike('name', `%${search}%`);
+      countQuery = countQuery.ilike('name', `%${search}%`);
     }
 
     if (active !== null) {
-      query = query.eq('is_active', active === 'true');
+      countQuery = countQuery.eq('is_active', active === 'true');
     }
 
-    const { data: brands, error, count } = await query;
+    const { count: totalCount, error: countError } = await countQuery;
+
+    if (countError) {
+      console.error('Count error:', countError);
+      return NextResponse.json(
+        { error: 'Failed to fetch brands count' },
+        { status: 500 }
+      );
+    }
+
+    // Then get the paginated data
+    let dataQuery = supabase
+      .from('brands')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (search) {
+      dataQuery = dataQuery.ilike('name', `%${search}%`);
+    }
+
+    if (active !== null) {
+      dataQuery = dataQuery.eq('is_active', active === 'true');
+    }
+
+    const { data: brands, error } = await dataQuery;
 
     if (error) {
+      console.error('Data fetch error:', error);
       return NextResponse.json(
         { error: 'Failed to fetch brands' },
         { status: 500 }
       );
     }
 
-    return createCachedResponse({
-      brands,
+    const total = totalCount || 0;
+    const totalPages = Math.ceil(total / limit);
+
+    return NextResponse.json({
+      brands: brands || [],
       pagination: {
         page,
         limit,
-        total: count || 0,
-        totalPages: Math.ceil((count || 0) / limit),
+        total,
+        totalPages,
       },
     }, {
-      cacheControl: CACHE_CONTROL.MEDIUM,
-      etag: true,
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      },
     });
   } catch (error) {
+    console.error('GET /api/brands error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
