@@ -32,10 +32,9 @@ export async function GET(request: NextRequest) {
         created_at,
         variant:variants (
           id,
-          sku,
           color_name,
           color_hex,
-          price,
+          price_modifier,
           stock_quantity,
           image_url,
           product_type:product_types (
@@ -100,10 +99,16 @@ export async function GET(request: NextRequest) {
     }
     
     // Calculate final prices
-    const productsWithPrices = filteredProducts?.map((product: any) => ({
-      ...product,
-      final_price: product.price_override || product.variant?.price || product.variant?.product_type?.base_price || 0,
-    }));
+    const productsWithPrices = filteredProducts?.map((product: any) => {
+      const basePrice = product.variant?.product_type?.base_price || 0;
+      const priceModifier = product.variant?.price_modifier || 0;
+      const variantPrice = basePrice + priceModifier;
+      
+      return {
+        ...product,
+        final_price: product.price_override || variantPrice,
+      };
+    });
     
     return NextResponse.json({ predesigned_products: productsWithPrices });
   } catch (error) {
@@ -181,9 +186,8 @@ export async function POST(request: NextRequest) {
         *,
         variant:variants (
           id,
-          sku,
           color_name,
-          price,
+          price_modifier,
           model:models (
             id,
             name,

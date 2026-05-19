@@ -53,6 +53,7 @@ export interface Variant {
   price_modifier?: number;
   stock_quantity: number;
   image_url?: string;
+  mask_image_url?: string;
   additional_image_urls?: string[];
   is_active: boolean;
   created_at: string;

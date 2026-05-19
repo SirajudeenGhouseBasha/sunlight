@@ -37,6 +37,7 @@ export interface Variant {
   price_modifier?: number;
   stock_quantity: number;
   image_url?: string;
+  mask_image_url?: string;
   additional_image_urls?: string[];
   is_active: boolean;
   created_at: string;
@@ -52,6 +53,7 @@ interface VariantFormData {
   price_modifier?: number;
   stock_quantity: number;
   image_url?: string;
+  mask_image_url?: string;
   additional_image_urls?: string[];
   is_active: boolean;
 }
@@ -74,6 +76,7 @@ export function VariantForm({ variant, models, productTypes, onSave, onCancel }:
     price_modifier: variant?.price_modifier || 0,
     stock_quantity: variant?.stock_quantity || 0,
     image_url: variant?.image_url || '',
+    mask_image_url: variant?.mask_image_url || '',
     additional_image_urls: variant?.additional_image_urls || [],
     is_active: variant?.is_active ?? true,
   });
@@ -293,15 +296,141 @@ export function VariantForm({ variant, models, productTypes, onSave, onCancel }:
       {/* Main Image */}
       <div>
         <Label htmlFor="image_url">
-          Main Image URL
+          Canvas Background Image
         </Label>
-        <Input
-          id="image_url"
-          type="text"
-          value={formData.image_url}
-          onChange={(e) => handleChange('image_url', e.target.value)}
-          placeholder="https://example.com/image.jpg"
-        />
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Input
+              id="image_url"
+              type="text"
+              value={formData.image_url}
+              onChange={(e) => handleChange('image_url', e.target.value)}
+              placeholder="https://example.com/canvas-background.jpg"
+              className="flex-1"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => document.getElementById('canvas-upload')?.click()}
+              className="px-3"
+            >
+              Upload
+            </Button>
+          </div>
+          <input
+            id="canvas-upload"
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              if (file) {
+                try {
+                  const formData = new FormData();
+                  formData.append('file', file);
+                  formData.append('type', 'product');
+                  
+                  const response = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData,
+                  });
+                  
+                  if (response.ok) {
+                    const result = await response.json();
+                    handleChange('image_url', result.url);
+                  } else {
+                    alert('Upload failed');
+                  }
+                } catch (error) {
+                  console.error('Upload error:', error);
+                  alert('Upload failed');
+                }
+              }
+            }}
+          />
+          {formData.image_url && (
+            <div className="mt-2">
+              <img
+                src={formData.image_url}
+                alt="Canvas background preview"
+                className="h-32 w-auto rounded border object-cover"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Recommended: 340x560px for design editor canvas
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Mask Image */}
+      <div>
+        <Label htmlFor="mask_image_url">
+          Overlay Mask Image (Optional)
+        </Label>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Input
+              id="mask_image_url"
+              type="text"
+              value={formData.mask_image_url || ''}
+              onChange={(e) => handleChange('mask_image_url', e.target.value)}
+              placeholder="https://example.com/camera-cutout-mask.png"
+              className="flex-1"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => document.getElementById('mask-upload')?.click()}
+              className="px-3"
+            >
+              Upload
+            </Button>
+          </div>
+          <input
+            id="mask-upload"
+            type="file"
+            accept="image/png"
+            className="hidden"
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              if (file) {
+                try {
+                  const formData = new FormData();
+                  formData.append('file', file);
+                  formData.append('type', 'product');
+                  
+                  const response = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData,
+                  });
+                  
+                  if (response.ok) {
+                    const result = await response.json();
+                    handleChange('mask_image_url', result.url);
+                  } else {
+                    alert('Upload failed');
+                  }
+                } catch (error) {
+                  console.error('Upload error:', error);
+                  alert('Upload failed');
+                }
+              }
+            }}
+          />
+          {formData.mask_image_url && (
+            <div className="mt-2">
+              <img
+                src={formData.mask_image_url}
+                alt="Mask overlay preview"
+                className="h-32 w-auto rounded border object-cover bg-gray-100"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Transparent PNG with camera cutouts and bezels
+              </p>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Additional Images */}
