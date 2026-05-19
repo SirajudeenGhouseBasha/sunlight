@@ -3,22 +3,33 @@
 @import "shadcn/tailwind.css";
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   MINIMALIST DESIGN SYSTEM - Inspired by BeMinimalist
-   Clean, modern, and purposeful design with maximum impact
+   GLOBAL SUNLIGHT ATMOSPHERE - Applied to ALL Pages
+   Warm orange ambient glow background as default theme
 ═══════════════════════════════════════════════════════════════════════════ */
 
-/* Import modern fonts - System font stack for performance */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   COLOR DEFINITIONS - SUNLIGHT PALETTE
+   ───────────────────────────────────────────────────────────────────────────── */
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-    /* Typography System - BeMinimalist inspired */
     --font-heading: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
     --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
     --font-mono: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace;
     
-    /* Minimalist Color Tokens */
+    /* ★ SUNLIGHT ATMOSPHERE COLORS ★ */
+    /* These are the exact colors from your design image */
+    --sunlight-base: #f8f8f6;
+    --sunlight-fog-peach: rgba(255, 210, 175, 0.45);
+    --sunlight-fog-orange: rgba(255, 185, 140, 0.40);
+    --sunlight-fog-apricot: rgba(255, 200, 160, 0.38);
+    --sunlight-fog-cream: rgba(255, 230, 200, 0.32);
+    --sunlight-fog-gold: rgba(255, 220, 190, 0.35);
+
+    /* Core minimalist colors */
     --color-pure-white: #ffffff;
     --color-pure-black: #000000;
     --color-neutral-50: #fafafa;
@@ -32,205 +43,205 @@
     --color-neutral-800: #262626;
     --color-neutral-900: #171717;
     
-    /* Accent Colors - Minimal but impactful */
+    /* Accent colors */
     --color-accent-blue: #0066ff;
     --color-accent-green: #00cc66;
     --color-accent-red: #ff3333;
     --color-accent-orange: #ff6600;
     --color-accent-purple: #6600cc;
     
-    /* Semantic Color Mapping */
+    /* Semantic mapping */
     --color-background: var(--background);
     --color-foreground: var(--foreground);
     --color-card: var(--card);
     --color-card-foreground: var(--card-foreground);
-    --color-popover: var(--popover);
-    --color-popover-foreground: var(--popover-foreground);
     --color-primary: var(--primary);
     --color-primary-foreground: var(--primary-foreground);
-    --color-secondary: var(--secondary);
-    --color-secondary-foreground: var(--secondary-foreground);
-    --color-muted: var(--muted);
-    --color-muted-foreground: var(--muted-foreground);
     --color-accent: var(--accent);
     --color-accent-foreground: var(--accent-foreground);
-    --color-destructive: var(--destructive);
-    --color-border: var(--border);
-    --color-input: var(--input);
-    --color-ring: var(--ring);
     
-    /* Spacing System - 4px base unit */
+    /* Spacing */
     --space-0: 0;
-    --space-1: 0.25rem;  /* 4px */
-    --space-2: 0.5rem;   /* 8px */
-    --space-3: 0.75rem;  /* 12px */
-    --space-4: 1rem;     /* 16px */
-    --space-5: 1.25rem;  /* 20px */
-    --space-6: 1.5rem;   /* 24px */
-    --space-8: 2rem;     /* 32px */
-    --space-10: 2.5rem;  /* 40px */
-    --space-12: 3rem;    /* 48px */
-    --space-16: 4rem;    /* 64px */
-    --space-20: 5rem;    /* 80px */
-    --space-24: 6rem;    /* 96px */
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-6: 1.5rem;
+    --space-8: 2rem;
+    --space-12: 3rem;
+    --space-16: 4rem;
     
-    /* Border Radius - Minimal and consistent */
-    --radius-none: 0;
-    --radius-sm: 0.25rem;   /* 4px */
-    --radius-md: 0.5rem;    /* 8px */
-    --radius-lg: 0.75rem;   /* 12px */
-    --radius-xl: 1rem;      /* 16px */
-    --radius-2xl: 1.5rem;   /* 24px */
-    --radius-3xl: 2rem;     /* 32px */
-    --radius-full: 9999px;
+    /* Border radius */
+    --radius-md: 0.5rem;
+    --radius-lg: 0.75rem;
+    --radius-xl: 1rem;
     
-    /* Shadows - Subtle and purposeful */
+    /* Shadows */
     --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
     
-    /* Animation Timing - Smooth and natural */
+    /* Animation */
     --duration-fast: 150ms;
     --duration-normal: 250ms;
-    --duration-slow: 350ms;
     --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-    --ease-in: cubic-bezier(0.4, 0, 1, 1);
-    --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
-    
-    /* Chart colors */
-    --color-chart-1: var(--color-accent-blue);
-    --color-chart-2: var(--color-accent-green);
-    --color-chart-3: var(--color-accent-orange);
-    --color-chart-4: var(--color-accent-purple);
-    --color-chart-5: var(--color-accent-red);
-    
-    /* Sidebar colors */
-    --color-sidebar: var(--sidebar);
-    --color-sidebar-foreground: var(--sidebar-foreground);
-    --color-sidebar-primary: var(--sidebar-primary);
-    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-    --color-sidebar-accent: var(--sidebar-accent);
-    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-    --color-sidebar-border: var(--sidebar-border);
-    --color-sidebar-ring: var(--sidebar-ring);
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   LIGHT THEME - 60-30-10 Rule: White (60%), Black (30%), Orange (10%)
-═══════════════════════════════════════════════════════════════════════════ */
+/* Light theme (default) */
 :root {
-    /* Core colors - 60% White */
-    --background: var(--color-pure-white);
+    --background: var(--sunlight-base);
     --foreground: var(--color-pure-black);
-    
-    /* Surface colors - 60% White */
     --card: var(--color-pure-white);
     --card-foreground: var(--color-pure-black);
-    --popover: var(--color-pure-white);
-    --popover-foreground: var(--color-pure-black);
-    
-    /* Interactive colors - 10% Orange accent */
     --primary: var(--color-accent-orange);
     --primary-foreground: var(--color-pure-white);
-    --secondary: var(--color-neutral-100);
-    --secondary-foreground: var(--color-pure-black);
-    
-    /* Muted colors - 60% White variations */
-    --muted: var(--color-neutral-50);
-    --muted-foreground: var(--color-neutral-600);
-    
-    /* Accent colors - 10% Orange */
     --accent: var(--color-accent-orange);
     --accent-foreground: var(--color-pure-white);
-    
-    /* System colors */
-    --destructive: var(--color-accent-red);
     --border: var(--color-neutral-200);
-    --input: var(--color-neutral-200);
-    --ring: var(--color-accent-orange);
-    
-    /* Chart colors */
-    --chart-1: var(--color-accent-orange);
-    --chart-2: var(--color-pure-black);
-    --chart-3: var(--color-neutral-600);
-    --chart-4: var(--color-neutral-400);
-    --chart-5: var(--color-accent-red);
-    
-    /* Sidebar colors - 30% Black */
-    --sidebar: var(--color-pure-black);
-    --sidebar-foreground: var(--color-pure-white);
-    --sidebar-primary: var(--color-accent-orange);
-    --sidebar-primary-foreground: var(--color-pure-white);
-    --sidebar-accent: var(--color-neutral-800);
-    --sidebar-accent-foreground: var(--color-pure-white);
-    --sidebar-border: var(--color-neutral-800);
-    --sidebar-ring: var(--color-accent-orange);
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   DARK THEME - 60-30-10 Rule: Black (60%), White (30%), Orange (10%)
-═══════════════════════════════════════════════════════════════════════════ */
+/* Dark theme */
 .dark {
-    /* Core colors - 60% Black */
     --background: var(--color-pure-black);
     --foreground: var(--color-pure-white);
-    
-    /* Surface colors - 60% Black */
     --card: var(--color-neutral-900);
     --card-foreground: var(--color-pure-white);
-    --popover: var(--color-neutral-900);
-    --popover-foreground: var(--color-pure-white);
-    
-    /* Interactive colors - 10% Orange accent */
     --primary: var(--color-accent-orange);
     --primary-foreground: var(--color-pure-white);
-    --secondary: var(--color-neutral-800);
-    --secondary-foreground: var(--color-pure-white);
-    
-    /* Muted colors - 60% Black variations */
-    --muted: var(--color-neutral-900);
-    --muted-foreground: var(--color-neutral-400);
-    
-    /* Accent colors - 10% Orange */
     --accent: var(--color-accent-orange);
     --accent-foreground: var(--color-pure-white);
-    
-    /* System colors */
-    --destructive: var(--color-accent-red);
     --border: var(--color-neutral-800);
-    --input: var(--color-neutral-800);
-    --ring: var(--color-accent-orange);
-    
-    /* Chart colors */
-    --chart-1: var(--color-accent-orange);
-    --chart-2: var(--color-pure-white);
-    --chart-3: var(--color-neutral-400);
-    --chart-4: var(--color-neutral-600);
-    --chart-5: var(--color-accent-red);
-    
-    /* Sidebar colors - 30% White */
-    --sidebar: var(--color-pure-white);
-    --sidebar-foreground: var(--color-pure-black);
-    --sidebar-primary: var(--color-accent-orange);
-    --sidebar-primary-foreground: var(--color-pure-white);
-    --sidebar-accent: var(--color-neutral-100);
-    --sidebar-accent-foreground: var(--color-pure-black);
-    --sidebar-border: var(--color-neutral-200);
-    --sidebar-ring: var(--color-accent-orange);
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   BASE STYLES - Minimalist foundation
-═══════════════════════════════════════════════════════════════════════════ */
-@layer base {
-    * {
-        @apply border-border;
-        box-sizing: border-box;
+/* ─────────────────────────────────────────────────────────────────────────────
+   GLOBAL SUNLIGHT ATMOSPHERE BACKGROUND
+   Applies to ALL pages as the default background effect
+   ───────────────────────────────────────────────────────────────────────────── */
+
+@layer utilities {
+    
+    /**
+     * ★ SUNLIGHT ATMOSPHERE ★
+     * 
+     * This is the core background effect that appears on every page.
+     * Uses fixed pseudo-elements with layered radial gradients.
+     * 
+     * The effect:
+     * - Top-left: Warm peach glow (8% opacity)
+     * - Bottom-right: Warm orange glow (7% opacity)
+     * - Bottom-left: Apricot haze (6% opacity)
+     * - Top-right: Subtle gold (5% opacity)
+     * 
+     * All extremely soft, blurred, and subtle — users FEEL the warmth
+     * rather than NOTICE the gradients.
+     */
+    
+    .sunlight-atmosphere {
+        position: relative;
+        isolation: isolate;
+        background-color: var(--sunlight-base);
+        min-height: 100vh;
     }
     
-    *::before,
-    *::after {
+    .sunlight-atmosphere::before,
+    .sunlight-atmosphere::after {
+        content: "";
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 0;
+        transform: translateZ(0);
+        will-change: transform;
+    }
+    
+    /**
+     * PRIMARY GRADIENT LAYER
+     * 
+     * Layer 1 (::before):
+     * - Top-left peach warmth (200% × 150% ellipse at -20%, -30%)
+     * - Bottom-right orange glow (180% × 140% ellipse at 120%, 110%)
+     * - Top-right subtle gold (150% × 100% ellipse at 80%, -10%)
+     * 
+     * Much larger ellipses create environmental fog rather than visible gradients
+     */
+    .sunlight-atmosphere::before {
+        background:
+            /* Top-left peach — main warmth */
+            radial-gradient(
+                ellipse 200% 150% at -20% -30%,
+                var(--sunlight-fog-peach) 0%,
+                transparent 35%
+            ),
+            /* Bottom-right orange — secondary glow */
+            radial-gradient(
+                ellipse 180% 140% at 120% 110%,
+                var(--sunlight-fog-orange) 0%,
+                transparent 32%
+            ),
+            /* Top-right gold accent — subtle top accent */
+            radial-gradient(
+                ellipse 150% 100% at 80% -10%,
+                var(--sunlight-fog-gold) 0%,
+                transparent 30%
+            );
+    }
+    
+    /**
+     * SECONDARY GRADIENT LAYER
+     * 
+     * Layer 2 (::after):
+     * - Bottom-left apricot haze (160% × 120% ellipse at 10%, 90%)
+     * - Right side cream glow (140% × 100% ellipse at 110%, 20%)
+     * - Center ambient gold (130% × 90% ellipse at 50%, 50%)
+     * 
+     * This layer adds depth and subtle mid-page atmospheric effect.
+     */
+    .sunlight-atmosphere::after {
+        background:
+            /* Bottom-left apricot haze */
+            radial-gradient(
+                ellipse 160% 120% at 10% 90%,
+                var(--sunlight-fog-apricot) 0%,
+                transparent 38%
+            ),
+            /* Right side cream glow — soft edge lighting */
+            radial-gradient(
+                ellipse 140% 100% at 110% 20%,
+                var(--sunlight-fog-cream) 0%,
+                transparent 36%
+            ),
+            /* Center ambient gold — overall depth */
+            radial-gradient(
+                ellipse 130% 90% at 50% 50%,
+                var(--sunlight-fog-gold) 0%,
+                transparent 40%
+            );
+    }
+    
+    /**
+     * CONTENT WRAPPER
+     * 
+     * All page content sits above the background layers.
+     * Z-index: 1 ensures content appears on top of pseudo-elements.
+     */
+    .sunlight-atmosphere__content {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-height: 100%;
+        width: 100%;
+    }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   BASE STYLES
+   ───────────────────────────────────────────────────────────────────────────── */
+
+@layer base {
+    * {
+      
         box-sizing: border-box;
     }
     
@@ -242,20 +253,22 @@
         text-rendering: optimizeLegibility;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
-        font-size: 16px; /* Base font size */
+        font-size: 16px;
+        background-color: var(--sunlight-base);
     }
-    
+
     body {
-        @apply bg-background text-foreground;
+        @apply text-foreground;
         font-synthesis: none;
         line-height: 1.6;
         margin: 0;
         min-height: 100vh;
-        font-size: 0.875rem; /* 14px - BeMinimalist body text */
+        font-size: 0.875rem;
         font-weight: 400;
+        background-color: var(--sunlight-base);
     }
     
-    /* Typography Scale - BeMinimalist style */
+    /* Typography */
     h1, h2, h3, h4, h5, h6 {
         @apply font-heading;
         font-weight: 700;
@@ -264,55 +277,20 @@
         margin: 0;
     }
     
-    h1 { 
-        font-size: 2rem;          /* 32px */
-        font-weight: 700;
-    }
-    h2 { 
-        font-size: 1.5rem;        /* 24px */
-        font-weight: 700;
-    }
-    h3 { 
-        font-size: 1.25rem;       /* 20px */
-        font-weight: 600;
-    }
-    h4 { 
-        font-size: 1.125rem;      /* 18px */
-        font-weight: 600;
-    }
-    h5 { 
-        font-size: 1rem;          /* 16px */
-        font-weight: 600;
-    }
-    h6 { 
-        font-size: 0.875rem;      /* 14px */
-        font-weight: 600;
-    }
+    h1 { font-size: 2rem; }
+    h2 { font-size: 1.5rem; }
+    h3 { font-size: 1.25rem; font-weight: 600; }
+    h4 { font-size: 1.125rem; font-weight: 600; }
+    h5 { font-size: 1rem; font-weight: 600; }
+    h6 { font-size: 0.875rem; font-weight: 600; }
     
     p {
         margin: 0;
         line-height: 1.6;
-        font-size: 0.875rem;      /* 14px - BeMinimalist body text */
-        font-weight: 400;
+        font-size: 0.875rem;
     }
     
-    /* Body text sizes */
-    .text-body {
-        font-size: 0.875rem;      /* 14px */
-        line-height: 1.6;
-    }
-    
-    .text-small {
-        font-size: 0.75rem;       /* 12px */
-        line-height: 1.5;
-    }
-    
-    .text-large {
-        font-size: 1rem;          /* 16px */
-        line-height: 1.6;
-    }
-    
-    /* Interactive Elements */
+    /* Interactive elements */
     button, input, textarea, select {
         font: inherit;
     }
@@ -326,7 +304,7 @@
         opacity: 0.5;
     }
     
-    /* Focus States - Minimalist but clear */
+    /* Focus states */
     :focus-visible {
         outline: 2px solid var(--ring);
         outline-offset: 2px;
@@ -343,7 +321,7 @@
         color: var(--color-pure-black);
     }
     
-    /* Scrollbars - Minimal and clean */
+    /* Scrollbars */
     ::-webkit-scrollbar {
         width: 6px;
         height: 6px;
@@ -361,20 +339,14 @@
     .dark ::-webkit-scrollbar-thumb {
         background: var(--color-neutral-700);
     }
-    
-    ::-webkit-scrollbar-thumb:hover {
-        background: var(--color-neutral-400);
-    }
-    
-    .dark ::-webkit-scrollbar-thumb:hover {
-        background: var(--color-neutral-600);
-    }
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   UTILITY CLASSES - Minimalist helpers
-═══════════════════════════════════════════════════════════════════════════ */
+/* ─────────────────────────────────────────────────────────────────────────────
+   UTILITY CLASSES
+   ───────────────────────────────────────────────────────────────────────────── */
+
 @layer utilities {
+    
     /* Text utilities */
     .text-balance {
         text-wrap: balance;
@@ -399,7 +371,7 @@
     
     /* Layout utilities */
     .container-narrow {
-        max-width: 42rem; /* 672px */
+        max-width: 42rem;
         margin-left: auto;
         margin-right: auto;
         padding-left: 1rem;
@@ -407,14 +379,14 @@
     }
     
     .container-wide {
-        max-width: 80rem; /* 1280px */
+        max-width: 80rem;
         margin-left: auto;
         margin-right: auto;
         padding-left: 1rem;
         padding-right: 1rem;
     }
     
-    /* Glass morphism effect */
+    /* Glass morphism */
     .glass {
         background: rgba(255, 255, 255, 0.1);
         backdrop-filter: blur(10px);
@@ -442,16 +414,13 @@
     }
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   ANIMATIONS - Smooth and purposeful
-═══════════════════════════════════════════════════════════════════════════ */
+/* ─────────────────────────────────────────────────────────────────────────────
+   ANIMATIONS
+   ───────────────────────────────────────────────────────────────────────────── */
+
 @keyframes fadeIn {
-    from {
-        opacity: 0;
-    }
-    to {
-        opacity: 1;
-    }
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 @keyframes slideUp {
@@ -476,31 +445,20 @@
     }
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   RESPONSIVE DESIGN - Mobile-first approach (BeMinimalist style)
-═══════════════════════════════════════════════════════════════════════════ */
+/* ─────────────────────────────────────────────────────────────────────────────
+   RESPONSIVE DESIGN
+   ───────────────────────────────────────────────────────────────────────────── */
+
 @media (max-width: 640px) {
-    h1 { 
-        font-size: 1.75rem;       /* 28px on mobile */
-        font-weight: 700;
-    }
-    h2 { 
-        font-size: 1.375rem;      /* 22px on mobile */
-        font-weight: 700;
-    }
-    h3 { 
-        font-size: 1.125rem;      /* 18px on mobile */
-        font-weight: 600;
-    }
-    
-    p, .text-body {
-        font-size: 0.875rem;      /* 14px stays same on mobile */
-    }
+    h1 { font-size: 1.75rem; }
+    h2 { font-size: 1.375rem; }
+    h3 { font-size: 1.125rem; }
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   REDUCED MOTION - Accessibility first
-═══════════════════════════════════════════════════════════════════════════ */
+/* ─────────────────────────────────────────────────────────────────────────────
+   ACCESSIBILITY - Reduced Motion
+   ───────────────────────────────────────────────────────────────────────────── */
+
 @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
@@ -512,9 +470,10 @@
     }
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   PRINT STYLES - Clean and minimal
-═══════════════════════════════════════════════════════════════════════════ */
+/* ─────────────────────────────────────────────────────────────────────────────
+   PRINT STYLES
+   ───────────────────────────────────────────────────────────────────────────── */
+
 @media print {
     * {
         background: transparent !important;

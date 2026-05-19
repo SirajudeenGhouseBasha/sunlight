@@ -34,6 +34,7 @@ export interface BrandFormProps {
   brand?: Brand | null;
   onSave: (data: BrandFormData) => void;
   onCancel: () => void;
+  isLoading?: boolean;
 }
 
 export function BrandForm({ brand, onSave, onCancel }: BrandFormProps) {
@@ -47,7 +48,7 @@ export function BrandForm({ brand, onSave, onCancel }: BrandFormProps) {
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
-    
+
     if (!formData.name.trim()) {
       newErrors.name = 'Brand name is required';
     }
@@ -58,13 +59,13 @@ export function BrandForm({ brand, onSave, onCancel }: BrandFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
 
     setIsSubmitting(true);
-    
+
     try {
       // Simulate API call delay
       await new Promise(resolve => setTimeout(resolve, 500));

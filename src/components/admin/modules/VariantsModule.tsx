@@ -10,7 +10,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/src/components/ui/button';
 import { Modal } from '@/src/components/admin/shared/Modal';
-import { DataTable } from '@/src/components/admin/shared/DataTable';
+import { HeroUITable } from '@/src/components/admin/shared/HeroUITable';
 import { Pagination } from '@/src/components/admin/shared/Pagination';
 import { SearchBar } from '@/src/components/admin/shared/SearchBar';
 import { VariantForm } from '@/src/components/admin/forms/VariantForm';
@@ -82,9 +82,9 @@ export function VariantsModule() {
   const [editingVariant, setEditingVariant] = useState<Variant | null>(null);
   const [totalItems, setTotalItems] = useState(0);
 
-  // Fetch variants
-  const fetchVariants = async () => {
-    setIsLoading(true);
+  // Fetch variants with useCallback to prevent stale closures
+  const fetchVariants = React.useCallback(async (showLoading = true) => {
+    if (showLoading) setIsLoading(true);
     try {
       const params = new URLSearchParams({
         page: currentPage.toString(),
@@ -105,9 +105,9 @@ export function VariantsModule() {
       console.error('Error fetching variants:', error);
       showToast('Failed to load variants', 'error');
     } finally {
-      setIsLoading(false);
+      if (showLoading) setIsLoading(false);
     }
-  };
+  }, [currentPage, pageSize, searchQuery, modelFilter, productTypeFilter, colorFilter, showToast]);
 
   // Fetch models for dropdown
   const fetchModels = async () => {
@@ -143,10 +143,14 @@ export function VariantsModule() {
   }, [searchQuery, modelFilter, productTypeFilter, colorFilter]);
 
   useEffect(() => {
-    fetchVariants();
+    fetchVariants(true);
+  }, [fetchVariants]);
+
+  // Fetch models and product types on mount
+  useEffect(() => {
     fetchModels();
     fetchProductTypes();
-  }, [currentPage, pageSize, searchQuery, modelFilter, productTypeFilter, colorFilter]);
+  }, []);
 
   // Handle create/edit variant
   const handleSaveVariant = async (variantData: Omit<Variant, 'id' | 'created_at'>) => {
@@ -166,18 +170,15 @@ export function VariantsModule() {
         throw new Error('Failed to save variant');
       }
 
-      const savedVariant: Variant = await response.json();
-      
       if (editingVariant) {
-        setVariants(variants.map(v => v.id === editingVariant.id ? savedVariant : v));
         showToast('Variant updated successfully', 'success');
       } else {
-        setVariants([...variants, savedVariant]);
         showToast('Variant created successfully', 'success');
       }
       setIsModalOpen(false);
       setEditingVariant(null);
-      fetchVariants();
+      setCurrentPage(1);
+      await fetchVariants(false);
     } catch (error) {
       console.error('Error saving variant:', error);
       showToast('Failed to save variant', 'error');
@@ -195,9 +196,8 @@ export function VariantsModule() {
         throw new Error('Failed to delete variant');
       }
 
-      setVariants(variants.filter(v => v.id !== variantId));
       showToast('Variant deleted successfully', 'success');
-      fetchVariants();
+      await fetchVariants(false);
     } catch (error) {
       console.error('Error deleting variant:', error);
       showToast('Failed to delete variant', 'error');
@@ -345,7 +345,7 @@ export function VariantsModule() {
 
       {/* Variants table */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-        <DataTable
+        <HeroUITable
           columns={columns}
           data={variants}
           isLoading={isLoading}

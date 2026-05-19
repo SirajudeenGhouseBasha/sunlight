@@ -7,7 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/src/lib/supabase/server';
-import { requireAdmin } from '@/src/lib/auth/session';
+import { validateAdminAccess } from '@/src/lib/auth/api-auth';
 import { PRODUCT_TYPES } from '@/src/types/products';
 import { createCachedResponse, CACHE_CONTROL } from '@/src/lib/cache/http-cache';
 
@@ -66,8 +66,11 @@ export async function GET(request: NextRequest) {
 // POST /api/product-types - Create new product type (Admin only)
 export async function POST(request: NextRequest) {
   try {
-    // Require admin authentication
-    await requireAdmin();
+    // Validate admin authentication
+    const auth = await validateAdminAccess();
+    if (!auth.isValid) {
+      return auth.response;
+    }
     
     const supabase = await createClient();
     const body = await request.json();
@@ -112,6 +115,7 @@ export async function POST(request: NextRequest) {
         );
       }
       
+      console.error('Product type insert error:', error);
       return NextResponse.json(
         { error: 'Failed to create product type' },
         { status: 500 }
@@ -120,13 +124,7 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json({ product_type }, { status: 201 });
   } catch (error) {
-    if (error instanceof Error && error.message.includes('unauthorized')) {
-      return NextResponse.json(
-        { error: 'Admin access required' },
-        { status: 403 }
-      );
-    }
-    
+    console.error('POST /api/product-types error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -134,11 +132,14 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// POST /api/product-types/seed - Seed default product types (Admin only)
+// PUT /api/product-types - Seed default product types (Admin only)
 export async function PUT(request: NextRequest) {
   try {
-    // Require admin authentication
-    await requireAdmin();
+    // Validate admin authentication
+    const auth = await validateAdminAccess();
+    if (!auth.isValid) {
+      return auth.response;
+    }
     
     const supabase = await createClient();
     
@@ -161,6 +162,7 @@ export async function PUT(request: NextRequest) {
       .select();
     
     if (error) {
+      console.error('Product types seed error:', error);
       return NextResponse.json(
         { error: 'Failed to seed product types' },
         { status: 500 }
@@ -172,13 +174,7 @@ export async function PUT(request: NextRequest) {
       product_types 
     });
   } catch (error) {
-    if (error instanceof Error && error.message.includes('unauthorized')) {
-      return NextResponse.json(
-        { error: 'Admin access required' },
-        { status: 403 }
-      );
-    }
-    
+    console.error('PUT /api/product-types error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

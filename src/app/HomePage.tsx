@@ -14,32 +14,10 @@ async function getHomePageData() {
         color_hex,
         price_modifier,
         stock_quantity,
-        created_at,
-        model:models!inner(
-          id,
-          name,
-          slug,
-          is_active,
-          brand:brands!inner(
-            id,
-            name,
-            slug,
-            is_active
-          )
-        ),
-        product_type:product_types!inner(
-          id,
-          name,
-          slug,
-          base_price,
-          description,
-          is_active
-        )
+        model_id,
+        product_type_id
       `)
       .eq('is_active', true)
-      .eq('model.is_active', true)
-      .eq('model.brand.is_active', true)
-      .eq('product_type.is_active', true)
       .gt('stock_quantity', 0)
       .order('created_at', { ascending: false })
       .limit(8),
@@ -62,12 +40,53 @@ async function getHomePageData() {
         id,
         name,
         slug,
-        description
+        description,
+        base_price
       `)
       .eq('is_active', true)
       .order('name', { ascending: true })
       .limit(6),
   ]);
+
+  let modelsMap: Record<string, any> = {};
+  let brandsMap: Record<string, any> = {};
+
+  if (featuredResult.data && featuredResult.data.length > 0) {
+    const modelIds = [...new Set((featuredResult.data as any[]).map(v => v.model_id))];
+
+    const modelsResult = await supabase
+      .from('models')
+      .select(`
+        id,
+        name,
+        slug,
+        brand_id
+      `)
+      .in('id', modelIds);
+
+    if (modelsResult.data) {
+      modelsMap = Object.fromEntries(
+        modelsResult.data.map(m => [m.id, m])
+      );
+
+      const brandIds = [...new Set(modelsResult.data.map(m => m.brand_id))];
+
+      const brandsForModelsResult = await supabase
+        .from('brands')
+        .select(`
+          id,
+          name,
+          slug
+        `)
+        .in('id', brandIds);
+
+      if (brandsForModelsResult.data) {
+        brandsMap = Object.fromEntries(
+          brandsForModelsResult.data.map(b => [b.id, b])
+        );
+      }
+    }
+  }
 
   if (featuredResult.error) {
     console.error('Featured products fetch error:', featuredResult.error);
@@ -81,47 +100,62 @@ async function getHomePageData() {
     console.error('Product types fetch error:', productTypesResult.error);
   }
 
+  const productTypesMap: Record<string, any> = {};
+
+  if (productTypesResult.data) {
+    productTypesResult.data.forEach(pt => {
+      productTypesMap[pt.id] = pt;
+    });
+  }
+
   const featuredProducts =
-    featuredResult.data?.map((variant: any) => ({
-      id: variant.id,
-      variant_id: variant.id,
-      slug:
-        variant.slug ||
-        `${variant.model.brand.slug}-${variant.model.slug}`,
+    featuredResult.data?.map((variant: any) => {
+      const model = modelsMap[variant.model_id];
+      const brand = model ? brandsMap[model.brand_id] : null;
+      const productType = productTypesMap[variant.product_type_id];
 
-      name: `${variant.model.brand.name} ${variant.model.name}`,
+      return {
+        id: variant.id,
+        variant_id: variant.id,
 
-      brand: {
-        id: variant.model.brand.id,
-        name: variant.model.brand.name,
-        slug: variant.model.brand.slug,
-      },
+        slug:
+          variant.slug ||
+          `${brand?.slug || 'unknown'}-${model?.slug || 'unknown'}`,
 
-      model: {
-        id: variant.model.id,
-        name: variant.model.name,
-        slug: variant.model.slug,
-      },
+        name: `${brand?.name || 'Unknown'} ${model?.name || 'Model'}`,
 
-      product_type: {
-        id: variant.product_type.id,
-        name: variant.product_type.name,
-        slug: variant.product_type.slug,
-        description: variant.product_type.description,
-      },
+        brand: {
+          id: brand?.id || '',
+          name: brand?.name || 'Unknown',
+          slug: brand?.slug || '',
+        },
 
-      color_name: variant.color_name,
-      color_hex: variant.color_hex,
+        model: {
+          id: model?.id || '',
+          name: model?.name || 'Unknown',
+          slug: model?.slug || '',
+        },
 
-      price:
-        Number(variant.product_type.base_price || 0) +
-        Number(variant.price_modifier || 0),
+        product_type: {
+          id: productType?.id || '',
+          name: productType?.name || 'Unknown',
+          slug: productType?.slug || '',
+          description: productType?.description || '',
+        },
 
-      stock_quantity: variant.stock_quantity,
-      in_stock: variant.stock_quantity > 0,
+        color_name: variant.color_name,
+        color_hex: variant.color_hex,
 
-      href: `/products/${variant.model.brand.slug}/${variant.model.slug}`,
-    })) || [];
+        price:
+          Number(productType?.base_price || 0) +
+          Number(variant.price_modifier || 0),
+
+        stock_quantity: variant.stock_quantity,
+        in_stock: variant.stock_quantity > 0,
+
+        href: `/products/${brand?.slug || 'unknown'}/${model?.slug || 'unknown'}`,
+      };
+    }) || [];
 
   return {
     featuredProducts,
@@ -132,22 +166,29 @@ async function getHomePageData() {
 
 function HomePageSkeleton() {
   return (
-    <div className="min-h-screen bg-black text-white">
-      <div className="animate-pulse">
-        <div className="h-screen flex items-center px-6 lg:px-20">
-          <div className="max-w-7xl mx-auto w-full grid lg:grid-cols-2 gap-20">
-            <div className="space-y-6">
-              <div className="h-4 w-40 bg-white/10 rounded" />
-              <div className="h-24 w-full max-w-xl bg-white/10 rounded-2xl" />
-              <div className="h-6 w-full max-w-lg bg-white/5 rounded" />
-              <div className="flex gap-4">
-                <div className="h-12 w-40 bg-white/10 rounded-xl" />
-                <div className="h-12 w-40 bg-white/5 rounded-xl" />
-              </div>
-            </div>
+    <div className="sunlight-atmosphere min-h-screen text-black">
+      <div className="sunlight-atmosphere__content">
+        <div className="animate-pulse">
+          <div className="h-screen flex items-center px-6 lg:px-20">
+            <div className="max-w-7xl mx-auto w-full grid lg:grid-cols-2 gap-20">
+              
+              <div className="space-y-6">
+                <div className="h-4 w-40 rounded bg-black/5" />
 
-            <div className="hidden lg:flex items-center justify-center">
-              <div className="w-[320px] h-[520px] rounded-[40px] bg-white/5 border border-white/10" />
+                <div className="h-24 w-full max-w-xl rounded-2xl bg-black/5" />
+
+                <div className="h-6 w-full max-w-lg rounded bg-black/[0.04]" />
+
+                <div className="flex gap-4">
+                  <div className="h-12 w-40 rounded-xl bg-black/5" />
+                  <div className="h-12 w-40 rounded-xl bg-black/[0.04]" />
+                </div>
+              </div>
+
+              <div className="hidden lg:flex items-center justify-center">
+                <div className="w-[320px] h-[520px] rounded-[40px] border border-black/[0.04] bg-white/20 backdrop-blur-xl" />
+              </div>
+
             </div>
           </div>
         </div>
@@ -161,11 +202,15 @@ async function HomePageContent() {
     await getHomePageData();
 
   return (
-    <HomePageClientAdvanced
-      featuredProducts={featuredProducts}
-      brands={brands}
-      productTypes={productTypes}
-    />
+    <div className="sunlight-atmosphere">
+      <div className="sunlight-atmosphere__content">
+        <HomePageClientAdvanced
+          featuredProducts={featuredProducts}
+          brands={brands}
+          productTypes={productTypes}
+        />
+      </div>
+    </div>
   );
 }
 

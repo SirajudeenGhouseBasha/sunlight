@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/src/lib/supabase/server';
+import { validateAdminAccess } from '@/src/lib/auth/api-auth';
 
 // GET /api/models/[id] - Get single model
 export async function GET(
@@ -51,34 +52,16 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Validate admin authentication
+    const auth = await validateAdminAccess();
+    if (!auth.isValid) {
+      return auth.response;
+    }
+    
     const { id } = await params;
     const supabase = await createClient();
-    
-    // Check if user is admin
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-    
-    // Verify admin role
-    const { data: userData } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-    
-    if (!userData || userData.role !== 'admin') {
-      return NextResponse.json(
-        { error: 'Forbidden - Admin access required' },
-        { status: 403 }
-      );
-    }
-    
     const body = await request.json();
+    
     const { brand_id, name, model_number, screen_size, release_year } = body;
     
     if (!brand_id || !name) {
@@ -130,6 +113,7 @@ export async function PATCH(
         );
       }
       
+      console.error('Model update error:', error);
       return NextResponse.json(
         { error: 'Failed to update model' },
         { status: 500 }
@@ -138,6 +122,7 @@ export async function PATCH(
     
     return NextResponse.json({ model });
   } catch (error) {
+    console.error('PATCH /api/models/[id] error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -151,32 +136,14 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Validate admin authentication
+    const auth = await validateAdminAccess();
+    if (!auth.isValid) {
+      return auth.response;
+    }
+    
     const { id } = await params;
     const supabase = await createClient();
-    
-    // Check if user is admin
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-    
-    // Verify admin role
-    const { data: userData } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-    
-    if (!userData || userData.role !== 'admin') {
-      return NextResponse.json(
-        { error: 'Forbidden - Admin access required' },
-        { status: 403 }
-      );
-    }
     
     // Check if model has associated variants
     const { data: variants, error: variantsError } = await supabase
@@ -186,6 +153,7 @@ export async function DELETE(
       .limit(1);
     
     if (variantsError) {
+      console.error('Variants check error:', variantsError);
       return NextResponse.json(
         { error: 'Failed to check model dependencies' },
         { status: 500 }
@@ -205,6 +173,7 @@ export async function DELETE(
       .eq('id', id);
     
     if (error) {
+      console.error('Model delete error:', error);
       return NextResponse.json(
         { error: 'Failed to delete model' },
         { status: 500 }
@@ -213,6 +182,7 @@ export async function DELETE(
     
     return NextResponse.json({ success: true });
   } catch (error) {
+    console.error('DELETE /api/models/[id] error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

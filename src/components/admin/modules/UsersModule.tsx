@@ -8,9 +8,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Button } from '@/src/components/ui/button';
 import { Modal } from '@/src/components/admin/shared/Modal';
-import { DataTable } from '@/src/components/admin/shared/DataTable';
+import { HeroUITable } from '@/src/components/admin/shared/HeroUITable';
 import { Pagination } from '@/src/components/admin/shared/Pagination';
 import { SearchBar } from '@/src/components/admin/shared/SearchBar';
 import { UserForm } from '@/src/components/admin/forms/UserForm';
@@ -210,7 +209,7 @@ export function UsersModule() {
 
       {/* Users table */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-        <DataTable
+        <HeroUITable
           columns={columns}
           data={users}
           isLoading={isLoading}

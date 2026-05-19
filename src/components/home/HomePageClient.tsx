@@ -1,14 +1,17 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useRef, RefObject } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { MainNav } from '@/src/components/navigation/MainNav';
 import { motion, useInView as useFramerInView } from 'framer-motion';
-import { Star } from 'lucide-react';
+import { Check, Palette, Sparkle, Sparkles, Star } from 'lucide-react';
+
+const CARD_SURFACE = 'rgba(255, 255, 255, 0.28)';
+const CARD_SURFACE_HOVER = 'rgba(255, 255, 255, 0.42)';
 import { useCart } from '@/src/context/CartContext';
 import { Toaster, toast } from 'react-hot-toast';
-import heroImage from '@/src/assets/landing-hero.png';
+import heroImage from '@/src/assets/landing-hero-1.png';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TYPES
@@ -198,13 +201,15 @@ function ProductCard({ product, delay, onAddToCart }: ProductCardProps) {
     >
       <div
         style={{
-          background: hovered ? '#f9fafb' : '#ffffff',
-          border: `1px solid ${hovered ? 'rgba(0, 0, 0, 0.15)' : 'rgba(0, 0, 0, 0.08)'}`,
+          background: hovered ? CARD_SURFACE_HOVER : CARD_SURFACE,
+          border: `1px solid ${hovered ? 'rgba(0, 0, 0, 0.08)' : 'rgba(0, 0, 0, 0.04)'}`,
           borderRadius: 12,
           overflow: 'hidden',
           cursor: 'pointer',
           transition: 'all 0.3s ease',
           boxShadow: hovered ? '0 20px 40px rgba(0, 0, 0, 0.08)' : 'none',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
         }}
       >
         <Link href={`/products/${product.variant_id}`} style={{ textDecoration: 'none' }}>
@@ -289,7 +294,7 @@ function ProductCard({ product, delay, onAddToCart }: ProductCardProps) {
                     color: '#000',
                     border: '1px solid rgba(0, 0, 0, 0.1)',
                   },
-                  icon: '✓',
+                  icon: <Check size={16} strokeWidth={2.5} />,
                 });
               }}
               disabled={!product.in_stock}
@@ -331,9 +336,11 @@ function StatCard({ value, suffix, label, delay }: StatCardProps) {
     >
       <div style={{
         textAlign: 'center', padding: '32px 20px',
-        background: '#f9fafb',
-        border: '1px solid rgba(0, 0, 0, 0.05)',
+        background: CARD_SURFACE,
+        border: '1px solid rgba(0, 0, 0, 0.04)',
         borderRadius: 12,
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
       }}>
         <div style={{
           fontSize: 42, fontWeight: 900, lineHeight: 1, marginBottom: 8, color: '#000',
@@ -365,8 +372,10 @@ function FeatureCard({ icon, title, desc, index }: FeatureCardProps) {
       transition={{ duration: 0.6, delay: index * 0.1 }}
       style={{
         display: 'flex', gap: 24, alignItems: 'flex-start',
-        padding: 32, background: '#f9fafb',
-        border: '1px solid rgba(0, 0, 0, 0.05)', borderRadius: 12,
+        padding: 32, background: CARD_SURFACE,
+        border: '1px solid rgba(0, 0, 0, 0.04)', borderRadius: 12,
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
       }}
     >
       <div style={{
@@ -400,10 +409,12 @@ function AnimatedTestimonial({ quote, author, role, index }: TestimonialProps) {
       whileHover={{ y: -4 }}
       style={{
         padding: '32px',
-        border: '1px solid rgba(0, 0, 0, 0.08)',
+        border: '1px solid rgba(0, 0, 0, 0.04)',
         borderRadius: 12,
-        background: '#f9fafb',
+        background: CARD_SURFACE,
         cursor: 'pointer',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
       }}
     >
       <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
@@ -473,24 +484,19 @@ export function HomePageClientAdvanced({
   };
 
   return (
-    <div style={{
-      background: '#fff',
+    <div
+      className="sunlight-home"
+      style={{
+      background: 'transparent',
       color: '#000',
-      fontFamily: '"Outfit", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+      fontFamily: 'var(--font-outfit), var(--font-geist-sans), system-ui, sans-serif',
       overflowX: 'hidden',
       minHeight: '100vh',
     }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
-        
-        * {
-          margin: 0;
-          padding: 0;
+        .sunlight-home,
+        .sunlight-home * {
           box-sizing: border-box;
-        }
-        
-        html {
-          scroll-behavior: smooth;
         }
 
         @keyframes floatPhone {
@@ -556,14 +562,14 @@ export function HomePageClientAdvanced({
           borderTop: '1px solid rgba(0,0,0,0.08)',
           borderBottom: '1px solid rgba(0,0,0,0.08)',
           padding: 'clamp(12px, 3vw, 18px) 0',
-          background: 'linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%)',
+          background: 'transparent',
         }}
       >
         <div style={{ display: 'flex', animation: 'marquee 25s linear infinite', whiteSpace: 'nowrap', width: 'max-content' }}>
           {[...Array(4)].flatMap((_, ai) =>
             ['PREMIUM QUALITY', 'CUSTOM DESIGNS', 'FREE SHIPPING', 'DROP PROTECTED', 'PERFECT FIT', '30-DAY RETURNS'].map((t) => (
               <span key={`${ai}-${t}`} style={{ fontSize: 'clamp(10px, 2vw, 12px)', fontWeight: 700, letterSpacing: 'clamp(1px, 0.5vw, 3px)', color: '#999', paddingRight: 'clamp(30px, 5vw, 60px)' }}>
-                <span style={{ color: '#000', marginRight: 'clamp(6px, 1vw, 12px)' }}>✦</span>{t}
+                <Sparkle size={10} strokeWidth={2} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 'clamp(6px, 1vw, 12px)' }} />{t}
               </span>
             ))
           )}
@@ -573,7 +579,7 @@ export function HomePageClientAdvanced({
       {/* ─── CTA CARDS ─── */}
       <section style={{
         padding: 'clamp(40px, 8vw, 60px) clamp(20px, 5vw, 40px)',
-        background: '#ffffff',
+        background: 'transparent',
         borderBottom: '1px solid rgba(0,0,0,0.05)',
       }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
@@ -584,18 +590,20 @@ export function HomePageClientAdvanced({
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
               style={{
-                background: 'linear-gradient(135deg, #f9fafb, #f3f4f6)',
-                border: '1px solid rgba(0,0,0,0.08)',
+                background: CARD_SURFACE,
+                border: '1px solid rgba(0,0,0,0.04)',
                 borderRadius: 16,
                 padding: 'clamp(32px, 6vw, 48px)',
                 textAlign: 'center',
                 cursor: 'pointer',
                 position: 'relative',
                 overflow: 'hidden',
+                backdropFilter: 'blur(20px)',
+                WebkitBackdropFilter: 'blur(20px)',
               }}
               whileHover={{ y: -8, boxShadow: '0 20px 40px rgba(0,0,0,0.1)' }}
             >
-              <div style={{ fontSize: 'clamp(36px, 8vw, 48px)', marginBottom: 16 }}>✨</div>
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}><Sparkles size={40} strokeWidth={1.5} /></div>
               <h3 style={{ fontSize: 'clamp(18px, 5vw, 24px)', fontWeight: 700, marginBottom: 12, color: '#000' }}>
                 Predesigned Cases
               </h3>
@@ -629,18 +637,20 @@ export function HomePageClientAdvanced({
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.1 }}
               style={{
-                background: 'linear-gradient(135deg, #f9fafb, #f3f4f6)',
-                border: '1px solid rgba(0,0,0,0.08)',
+                background: CARD_SURFACE,
+                border: '1px solid rgba(0,0,0,0.04)',
                 borderRadius: 16,
                 padding: 'clamp(32px, 6vw, 48px)',
                 textAlign: 'center',
                 cursor: 'pointer',
                 position: 'relative',
                 overflow: 'hidden',
+                backdropFilter: 'blur(20px)',
+                WebkitBackdropFilter: 'blur(20px)',
               }}
               whileHover={{ y: -8, boxShadow: '0 20px 40px rgba(0,0,0,0.1)' }}
             >
-              <div style={{ fontSize: 'clamp(36px, 8vw, 48px)', marginBottom: 16 }}>🎨</div>
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}><Palette size={40} strokeWidth={1.5} /></div>
               <h3 style={{ fontSize: 'clamp(18px, 5vw, 24px)', fontWeight: 700, marginBottom: 12, color: '#000' }}>
                 Design Custom
               </h3>
@@ -676,7 +686,7 @@ export function HomePageClientAdvanced({
       {productTypes.length > 0 && (
         <section style={{
           padding: 'clamp(60px, 10vw, 100px) clamp(20px, 5vw, 40px)',
-          background: 'linear-gradient(135deg, #ffffff 0%, #f9fafb 100%)',
+          background: 'transparent',
           borderBottom: '1px solid rgba(0,0,0,0.05)',
         }}>
           <div style={{ maxWidth: '1280px', margin: '0 auto' }}>
@@ -706,23 +716,25 @@ export function HomePageClientAdvanced({
                     <div
                       style={{
                         padding: 'clamp(24px, 4vw, 32px)',
-                        background: 'linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%)',
-                        border: '1px solid rgba(0, 0, 0, 0.08)',
+                        background: 'transparent',
+                        border: '1px solid rgba(0, 0, 0, 0.04)',
                         borderRadius: '12px',
                         cursor: 'pointer',
                         transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                        backdropFilter: 'blur(20px)',
+                        WebkitBackdropFilter: 'blur(20px)',
                       }}
                       onMouseEnter={(e: React.MouseEvent<HTMLDivElement>) => {
-                        e.currentTarget.style.borderColor = 'rgba(0, 0, 0, 0.15)';
+                        e.currentTarget.style.borderColor = 'rgba(0, 0, 0, 0.08)';
                         e.currentTarget.style.transform = 'translateY(-4px)';
                         e.currentTarget.style.boxShadow = '0 20px 25px rgba(0, 0, 0, 0.08)';
-                        e.currentTarget.style.background = 'linear-gradient(135deg, #fff 0%, #f9fafb 100%)';
+                        e.currentTarget.style.background = CARD_SURFACE_HOVER;
                       }}
                       onMouseLeave={(e: React.MouseEvent<HTMLDivElement>) => {
-                        e.currentTarget.style.borderColor = 'rgba(0, 0, 0, 0.08)';
+                        e.currentTarget.style.borderColor = 'rgba(0, 0, 0, 0.04)';
                         e.currentTarget.style.transform = 'none';
                         e.currentTarget.style.boxShadow = 'none';
-                        e.currentTarget.style.background = 'linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%)';
+                        e.currentTarget.style.background = 'transparent';
                       }}
                     >
                       <div style={{ fontSize: 'clamp(15px, 3vw, 17px)', fontWeight: '700', color: '#000', marginBottom: '8px' }}>{type.name}</div>
@@ -788,7 +800,7 @@ export function HomePageClientAdvanced({
       {/* ─── SHOP BY BRAND ─── */}
       <section style={{
         padding: '80px 40px',
-        background: 'linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%)',
+        background: 'transparent',
         borderBottom: '1px solid rgba(0,0,0,0.05)',
       }}>
         <div style={{ maxWidth: 1200, margin: '0 auto', textAlign: 'center' }}>
@@ -816,8 +828,8 @@ export function HomePageClientAdvanced({
                 <Link
                   href={`/products?brand=${brand.slug}`}
                   style={{
-                    background: '#fff',
-                    border: '1px solid rgba(0, 0, 0, 0.08)',
+                    background: CARD_SURFACE,
+                    border: '1px solid rgba(0, 0, 0, 0.04)',
                     color: '#666',
                     padding: '12px 28px',
                     borderRadius: 50,
@@ -828,9 +840,11 @@ export function HomePageClientAdvanced({
                     letterSpacing: 0.5,
                     display: 'inline-block',
                     cursor: 'pointer',
+                    backdropFilter: 'blur(20px)',
+                    WebkitBackdropFilter: 'blur(20px)',
                   }}
                   onMouseEnter={(e: React.MouseEvent<HTMLAnchorElement>) => {
-                    e.currentTarget.style.borderColor = 'rgba(0, 0, 0, 0.2)';
+                    e.currentTarget.style.borderColor = 'rgba(0, 0, 0, 0.08)';
                     e.currentTarget.style.color = '#000';
                     e.currentTarget.style.background = 'linear-gradient(135deg, #000, #333)';
                     e.currentTarget.style.color = '#fff';
@@ -838,9 +852,9 @@ export function HomePageClientAdvanced({
                     e.currentTarget.style.boxShadow = '0 10px 30px rgba(0,0,0,0.1)';
                   }}
                   onMouseLeave={(e: React.MouseEvent<HTMLAnchorElement>) => {
-                    e.currentTarget.style.borderColor = 'rgba(0, 0, 0, 0.08)';
+                    e.currentTarget.style.borderColor = 'rgba(0, 0, 0, 0.04)';
                     e.currentTarget.style.color = '#666';
-                    e.currentTarget.style.background = '#fff';
+                    e.currentTarget.style.background = CARD_SURFACE;
                     e.currentTarget.style.transform = 'none';
                     e.currentTarget.style.boxShadow = 'none';
                   }}
@@ -854,7 +868,7 @@ export function HomePageClientAdvanced({
       {/* ─── STATS ─── */}
       <section style={{
         padding: 'clamp(60px, 10vw, 100px) clamp(20px, 5vw, 40px)',
-        background: 'linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%)',
+        background: 'transparent',
         borderBottom: '1px solid rgba(0,0,0,0.05)',
       }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
@@ -871,7 +885,7 @@ export function HomePageClientAdvanced({
       {/* ─── TESTIMONIALS ─── */}
       <section style={{
         padding: '100px 40px',
-        background: 'linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%)',
+        background: 'transparent',
         borderBottom: '1px solid rgba(0,0,0,0.05)',
       }}>
         <div style={{ maxWidth: '1280px', margin: '0 auto' }}>
@@ -915,7 +929,7 @@ export function HomePageClientAdvanced({
       {/* ─── HOW IT WORKS ─── */}
       <section style={{
         padding: 'clamp(60px, 10vw, 120px) clamp(20px, 5vw, 40px)',
-        background: 'linear-gradient(135deg, #ffffff 0%, #f9fafb 100%)',
+        background: 'transparent',
         borderBottom: '1px solid rgba(0,0,0,0.05)',
       }}>
         <div style={{ maxWidth: '1280px', margin: '0 auto' }}>
@@ -950,21 +964,23 @@ export function HomePageClientAdvanced({
                 transition={{ duration: 0.6, delay: i * 0.1 }}
                 style={{
                   padding: 'clamp(28px, 5vw, 40px)',
-                  background: 'linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%)',
-                  border: '1px solid rgba(0,0,0,0.08)',
+                  background: 'transparent',
+                  border: '1px solid rgba(0,0,0,0.04)',
                   borderRadius: '16px',
                   textAlign: 'center',
                   position: 'relative',
                   cursor: 'pointer',
                   transition: 'all 0.3s ease',
+                  backdropFilter: 'blur(20px)',
+                  WebkitBackdropFilter: 'blur(20px)',
                 }}
                 onMouseEnter={(e: React.MouseEvent<HTMLDivElement>) => {
-                  e.currentTarget.style.borderColor = 'rgba(0,0,0,0.15)';
+                  e.currentTarget.style.borderColor = 'rgba(0,0,0,0.08)';
                   e.currentTarget.style.transform = 'translateY(-8px)';
                   e.currentTarget.style.boxShadow = '0 20px 40px rgba(0,0,0,0.08)';
                 }}
                 onMouseLeave={(e: React.MouseEvent<HTMLDivElement>) => {
-                  e.currentTarget.style.borderColor = 'rgba(0,0,0,0.08)';
+                  e.currentTarget.style.borderColor = 'rgba(0,0,0,0.04)';
                   e.currentTarget.style.transform = 'none';
                   e.currentTarget.style.boxShadow = 'none';
                 }}
@@ -1021,7 +1037,7 @@ export function HomePageClientAdvanced({
           overflow: 'hidden',
           borderTop: '1px solid rgba(0, 0, 0, 0.05)',
           borderBottom: '1px solid rgba(0, 0, 0, 0.05)',
-          background: 'linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%)',
+          background: 'transparent',
         }}
       >
         <div style={{
@@ -1033,7 +1049,7 @@ export function HomePageClientAdvanced({
         }} />
 
         <div style={{ maxWidth: 700, margin: '0 auto', textAlign: 'center', position: 'relative' }}>
-          <div style={{ fontSize: 64, marginBottom: 24 }}>✨</div>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}><Sparkles size={56} strokeWidth={1.5} /></div>
           <motion.h2
             initial={{ opacity: 0, y: 40 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -1091,7 +1107,7 @@ export function HomePageClientAdvanced({
         style={{
           padding: '60px 40px',
           borderTop: '1px solid rgba(0, 0, 0, 0.05)',
-          background: 'linear-gradient(135deg, #ffffff 0%, #f9fafb 100%)',
+          background: 'transparent',
         }}
       >
         <div style={{ maxWidth: '1280px', margin: '0 auto' }}>

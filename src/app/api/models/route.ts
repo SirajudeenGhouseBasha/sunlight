@@ -7,7 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/src/lib/supabase/server';
-import { requireAdmin } from '@/src/lib/auth/session';
+import { validateAdminAccess } from '@/src/lib/auth/api-auth';
 // GET /api/models - List all models
 export async function GET(request: NextRequest) {
   try {
@@ -78,8 +78,11 @@ export async function GET(request: NextRequest) {
 // POST /api/models - Create new model (Admin only)
 export async function POST(request: NextRequest) {
   try {
-    // Require admin authentication
-    await requireAdmin();
+    // Validate admin authentication
+    const auth = await validateAdminAccess();
+    if (!auth.isValid) {
+      return auth.response;
+    }
     
     const supabase = await createClient();
     const body = await request.json();
@@ -148,6 +151,7 @@ export async function POST(request: NextRequest) {
         );
       }
       
+      console.error('Model insert error:', error);
       return NextResponse.json(
         { error: 'Failed to create model' },
         { status: 500 }
@@ -156,13 +160,7 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json({ model }, { status: 201 });
   } catch (error) {
-    if (error instanceof Error && error.message.includes('unauthorized')) {
-      return NextResponse.json(
-        { error: 'Admin access required' },
-        { status: 403 }
-      );
-    }
-    
+    console.error('POST /api/models error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

@@ -8,9 +8,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Button } from '@/src/components/ui/button';
 import { Modal } from '@/src/components/admin/shared/Modal';
-import { DataTable } from '@/src/components/admin/shared/DataTable';
+import { HeroUITable } from '@/src/components/admin/shared/HeroUITable';
 import { Pagination } from '@/src/components/admin/shared/Pagination';
 import { SearchBar } from '@/src/components/admin/shared/SearchBar';
 import { ModelForm } from '@/src/components/admin/forms/ModelForm';
@@ -61,9 +60,9 @@ export function ModelsModule() {
   const [editingModel, setEditingModel] = useState<Model | null>(null);
   const [totalItems, setTotalItems] = useState(0);
 
-  // Fetch models
-  const fetchModels = async () => {
-    setIsLoading(true);
+  // Fetch models with useCallback to prevent stale closures
+  const fetchModels = React.useCallback(async (showLoading = true) => {
+    if (showLoading) setIsLoading(true);
     try {
       const params = new URLSearchParams({
         page: currentPage.toString(),
@@ -82,9 +81,9 @@ export function ModelsModule() {
       console.error('Error fetching models:', error);
       showToast('Failed to load models', 'error');
     } finally {
-      setIsLoading(false);
+      if (showLoading) setIsLoading(false);
     }
-  };
+  }, [currentPage, pageSize, searchQuery, brandFilter, showToast]);
 
   // Fetch brands for dropdown
   const fetchBrands = async () => {
@@ -106,9 +105,13 @@ export function ModelsModule() {
   }, [searchQuery, brandFilter]);
 
   useEffect(() => {
-    fetchModels();
+    fetchModels(true);
+  }, [fetchModels]);
+
+  // Fetch brands on mount
+  useEffect(() => {
     fetchBrands();
-  }, [currentPage, pageSize, searchQuery, brandFilter]);
+  }, []);
 
   // Handle create/edit model
   const handleSaveModel = async (modelData: Omit<Model, 'id' | 'created_at'>) => {
@@ -128,19 +131,16 @@ export function ModelsModule() {
         throw new Error('Failed to save model');
       }
 
-      const savedModel: Model = await response.json();
-      
       if (editingModel) {
-        setModels(models.map(m => m.id === editingModel.id ? savedModel : m));
         showToast('Model updated successfully', 'success');
       } else {
-        setModels([...models, savedModel]);
         showToast('Model created successfully', 'success');
       }
 
       setIsModalOpen(false);
       setEditingModel(null);
-      fetchModels();
+      setCurrentPage(1);
+      await fetchModels(false);
     } catch (error) {
       console.error('Error saving model:', error);
       showToast('Failed to save model', 'error');
@@ -158,9 +158,8 @@ export function ModelsModule() {
         throw new Error('Failed to delete model');
       }
 
-      setModels(models.filter(m => m.id !== modelId));
       showToast('Model deleted successfully', 'success');
-      fetchModels();
+      await fetchModels(false);
     } catch (error) {
       console.error('Error deleting model:', error);
       showToast('Failed to delete model', 'error');
@@ -228,7 +227,7 @@ export function ModelsModule() {
 
       {/* Models table */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-        <DataTable
+        <HeroUITable
           columns={columns}
           data={models}
           isLoading={isLoading}

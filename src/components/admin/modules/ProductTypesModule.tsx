@@ -8,9 +8,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Button } from '@/src/components/ui/button';
 import { Modal } from '@/src/components/admin/shared/Modal';
-import { DataTable } from '@/src/components/admin/shared/DataTable';
+import { HeroUITable } from '@/src/components/admin/shared/HeroUITable';
 import { Pagination } from '@/src/components/admin/shared/Pagination';
 import { SearchBar } from '@/src/components/admin/shared/SearchBar';
 import { ProductTypeForm } from '@/src/components/admin/forms/ProductTypeForm';
@@ -49,9 +48,9 @@ export function ProductTypesModule() {
   const [editingProductType, setEditingProductType] = useState<ProductType | null>(null);
   const [totalItems, setTotalItems] = useState(0);
 
-  // Fetch product types
-  const fetchProductTypes = async () => {
-    setIsLoading(true);
+  // Fetch product types with useCallback to prevent stale closures
+  const fetchProductTypes = React.useCallback(async (showLoading = true) => {
+    if (showLoading) setIsLoading(true);
     try {
       const params = new URLSearchParams({
         page: currentPage.toString(),
@@ -70,9 +69,9 @@ export function ProductTypesModule() {
       console.error('Error fetching product types:', error);
       showToast('Failed to load product types', 'error');
     } finally {
-      setIsLoading(false);
+      if (showLoading) setIsLoading(false);
     }
-  };
+  }, [currentPage, pageSize, searchQuery, statusFilter, showToast]);
 
   // Reset to page 1 when search or filter changes
   useEffect(() => {
@@ -80,8 +79,8 @@ export function ProductTypesModule() {
   }, [searchQuery, statusFilter]);
 
   useEffect(() => {
-    fetchProductTypes();
-  }, [currentPage, pageSize, searchQuery, statusFilter]);
+    fetchProductTypes(true);
+  }, [fetchProductTypes]);
 
   // Handle create/edit product type
   const handleSaveProductType = async (productTypeData: Omit<ProductType, 'id' | 'created_at'>) => {
@@ -103,19 +102,16 @@ export function ProductTypesModule() {
         throw new Error('Failed to save product type');
       }
 
-      const savedProductType: ProductType = await response.json();
-      
       if (editingProductType) {
-        setProductTypes(productTypes.map(pt => pt.id === editingProductType.id ? savedProductType : pt));
         showToast('Product type updated successfully', 'success');
       } else {
-        setProductTypes([...productTypes, savedProductType]);
         showToast('Product type created successfully', 'success');
       }
 
       setIsModalOpen(false);
       setEditingProductType(null);
-      fetchProductTypes();
+      setCurrentPage(1);
+      await fetchProductTypes(false);
     } catch (error) {
       console.error('Error saving product type:', error);
       showToast('Failed to save product type', 'error');
@@ -133,9 +129,8 @@ export function ProductTypesModule() {
         throw new Error('Failed to delete product type');
       }
 
-      setProductTypes(productTypes.filter(pt => pt.id !== productTypeId));
       showToast('Product type deleted successfully', 'success');
-      fetchProductTypes();
+      await fetchProductTypes(false);
     } catch (error) {
       console.error('Error deleting product type:', error);
       showToast('Failed to delete product type', 'error');
@@ -208,7 +203,7 @@ export function ProductTypesModule() {
 
       {/* Product types table */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-        <DataTable
+        <HeroUITable
           columns={columns}
           data={productTypes}
           isLoading={isLoading}

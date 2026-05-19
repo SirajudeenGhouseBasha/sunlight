@@ -10,7 +10,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/src/components/ui/button';
 import { Modal } from '@/src/components/admin/shared/Modal';
-import { DataTable } from '@/src/components/admin/shared/DataTable';
+import { HeroUITable } from '@/src/components/admin/shared/HeroUITable';
 import { Pagination } from '@/src/components/admin/shared/Pagination';
 import { SearchBar } from '@/src/components/admin/shared/SearchBar';
 import { PredesignedForm } from '@/src/components/admin/forms/PredesignedForm';
@@ -60,9 +60,9 @@ export function PredesignedModule() {
   const [editingPredesigned, setEditingPredesigned] = useState<Predesigned | null>(null);
   const [totalItems, setTotalItems] = useState(0);
 
-  // Fetch predesigned
-  const fetchPredesigned = async () => {
-    setIsLoading(true);
+  // Fetch predesigned with useCallback to prevent stale closures
+  const fetchPredesigned = React.useCallback(async (showLoading = true) => {
+    if (showLoading) setIsLoading(true);
     try {
       const response = await fetch(`/api/predesigned`);
       if (!response.ok) {
@@ -87,9 +87,9 @@ export function PredesignedModule() {
       console.error('Error fetching predesigned:', error);
       showToast('Failed to load predesigned', 'error');
     } finally {
-      setIsLoading(false);
+      if (showLoading) setIsLoading(false);
     }
-  };
+  }, [currentPage, pageSize, searchQuery, featuredFilter, showToast]);
 
   // Fetch variants for dropdown
   const fetchVariants = async () => {
@@ -124,10 +124,14 @@ export function PredesignedModule() {
   }, [searchQuery, featuredFilter]);
 
   useEffect(() => {
-    fetchPredesigned();
+    fetchPredesigned(true);
+  }, [fetchPredesigned]);
+
+  // Fetch variants and designs on mount
+  useEffect(() => {
     fetchVariants();
     fetchDesigns();
-  }, [currentPage, pageSize, searchQuery, featuredFilter]);
+  }, []);
 
   // Handle create/edit predesigned
   const handleSavePredesigned = async (predesignedData: Omit<Predesigned, 'id' | 'created_at'>) => {
@@ -149,19 +153,16 @@ export function PredesignedModule() {
         throw new Error('Failed to save predesigned');
       }
 
-      const savedPredesigned: Predesigned = await response.json();
-      
       if (editingPredesigned) {
-        setPredesigned(predesigned.map(p => p.id === editingPredesigned.id ? savedPredesigned : p));
         showToast('Predesigned updated successfully', 'success');
       } else {
-        setPredesigned([...predesigned, savedPredesigned]);
         showToast('Predesigned created successfully', 'success');
       }
 
       setIsModalOpen(false);
       setEditingPredesigned(null);
-      fetchPredesigned();
+      setCurrentPage(1);
+      await fetchPredesigned(false);
     } catch (error) {
       console.error('Error saving predesigned:', error);
       showToast('Failed to save predesigned', 'error');
@@ -179,9 +180,8 @@ export function PredesignedModule() {
         throw new Error('Failed to delete predesigned');
       }
 
-      setPredesigned(predesigned.filter(p => p.id !== predesignedId));
       showToast('Predesigned deleted successfully', 'success');
-      fetchPredesigned();
+      await fetchPredesigned(false);
     } catch (error) {
       console.error('Error deleting predesigned:', error);
       showToast('Failed to delete predesigned', 'error');
@@ -262,7 +262,7 @@ export function PredesignedModule() {
 
       {/* Predesigned table */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-        <DataTable
+        <HeroUITable
           columns={columns}
           data={predesigned}
           isLoading={isLoading}

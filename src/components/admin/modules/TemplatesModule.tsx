@@ -8,9 +8,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Button } from '@/src/components/ui/button';
 import { Modal } from '@/src/components/admin/shared/Modal';
-import { DataTable } from '@/src/components/admin/shared/DataTable';
+import { HeroUITable } from '@/src/components/admin/shared/HeroUITable';
 import { Pagination } from '@/src/components/admin/shared/Pagination';
 import { SearchBar } from '@/src/components/admin/shared/SearchBar';
 import { TemplateForm } from '@/src/components/admin/forms/TemplateForm';
@@ -44,9 +43,9 @@ export function TemplatesModule() {
   const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
   const [totalItems, setTotalItems] = useState(0);
 
-  // Fetch templates
-  const fetchTemplates = async () => {
-    setIsLoading(true);
+  // Fetch templates with useCallback to prevent stale closures
+  const fetchTemplates = React.useCallback(async (showLoading = true) => {
+    if (showLoading) setIsLoading(true);
     try {
       const response = await fetch(`/api/designs/templates`);
       if (!response.ok) {
@@ -75,9 +74,9 @@ export function TemplatesModule() {
       console.error('Error fetching templates:', error);
       showToast('Failed to load templates', 'error');
     } finally {
-      setIsLoading(false);
+      if (showLoading) setIsLoading(false);
     }
-  };
+  }, [currentPage, pageSize, searchQuery, categoryFilter, featuredFilter, showToast]);
 
   // Reset to page 1 when search or filters change
   useEffect(() => {
@@ -85,8 +84,8 @@ export function TemplatesModule() {
   }, [searchQuery, categoryFilter, featuredFilter]);
 
   useEffect(() => {
-    fetchTemplates();
-  }, [currentPage, pageSize, searchQuery, categoryFilter, featuredFilter]);
+    fetchTemplates(true);
+  }, [fetchTemplates]);
 
   // Handle create/edit template
   const handleSaveTemplate = async (templateData: Omit<Template, 'id' | 'created_at'>) => {
@@ -106,19 +105,16 @@ export function TemplatesModule() {
         throw new Error('Failed to save template');
       }
 
-      const savedTemplate: Template = await response.json();
-      
       if (editingTemplate) {
-        setTemplates(templates.map(t => t.id === editingTemplate.id ? savedTemplate : t));
         showToast('Template updated successfully', 'success');
       } else {
-        setTemplates([...templates, savedTemplate]);
         showToast('Template created successfully', 'success');
       }
 
       setIsModalOpen(false);
       setEditingTemplate(null);
-      fetchTemplates();
+      setCurrentPage(1);
+      await fetchTemplates(false);
     } catch (error) {
       console.error('Error saving template:', error);
       showToast('Failed to save template', 'error');
@@ -136,9 +132,8 @@ export function TemplatesModule() {
         throw new Error('Failed to delete template');
       }
 
-      setTemplates(templates.filter(t => t.id !== templateId));
       showToast('Template deleted successfully', 'success');
-      fetchTemplates();
+      await fetchTemplates(false);
     } catch (error) {
       console.error('Error deleting template:', error);
       showToast('Failed to delete template', 'error');
@@ -237,7 +232,7 @@ export function TemplatesModule() {
 
       {/* Templates table */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-        <DataTable
+        <HeroUITable
           columns={columns}
           data={templates}
           isLoading={isLoading}
