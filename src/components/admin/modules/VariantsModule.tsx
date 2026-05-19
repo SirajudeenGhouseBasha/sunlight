@@ -3,18 +3,29 @@
  * 
  * Variants management module with CRUD operations
  * Requirements: 11.1-11.11 - Variants module specifications
+ * 
+ * Production-grade implementation with:
+ * - Optimistic updates
+ * - Race condition prevention
+ * - Proper error handling and recovery
+ * - Debounced search
+ * - Automatic pagination adjustment
+ * - Retry logic with exponential backoff
+ * - Offline cache support
+ * - Memory leak prevention
+ * - Full accessibility
  */
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Button } from '@/src/components/ui/button';
+import React, { useState, useCallback, useMemo } from 'react';
 import { Modal } from '@/src/components/admin/shared/Modal';
-import { HeroUITable } from '@/src/components/admin/shared/HeroUITable';
 import { Pagination } from '@/src/components/admin/shared/Pagination';
 import { SearchBar } from '@/src/components/admin/shared/SearchBar';
 import { VariantForm } from '@/src/components/admin/forms/VariantForm';
 import { useToast } from '@/src/components/admin/shared/Toast';
+import { useDataTable } from '@/src/hooks/useDataTable';
+import { ProductionDataTable, Column } from '@/src/components/ui/productionDataTable';
 
 // Model type
 export interface Model {
@@ -42,335 +53,442 @@ export interface Variant {
   price_modifier?: number;
   stock_quantity: number;
   image_url?: string;
+  mask_image_url?: string;
   additional_image_urls?: string[];
   is_active: boolean;
   created_at: string;
 }
 
-// API response types
-interface ModelsResponse {
-  models: Model[];
+// VariantForm data type
+interface VariantFormData {
+  name: string;
+  model_id: string;
+  product_type_id: string;
+  color_name: string;
+  color_hex: string;
+  price_modifier?: number;
+  stock_quantity: number;
+  image_url?: string;
+  additional_image_urls?: string[];
+  is_active: boolean;
 }
 
-interface ProductTypesResponse {
-  product_types: ProductType[];
-}
+/**
+ * Fetch function to retrieve variants from API
+ * Handles pagination, search, and filtering
+ */
+async function fetchVariants(options: any) {
+  const params = new URLSearchParams({
+    page: options.page?.toString() || '1',
+    limit: options.limit?.toString() || '10',
+    search: options.search || '',
+    ...(options.sortBy && { sortBy: options.sortBy }),
+    ...(options.sortOrder && { sortOrder: options.sortOrder }),
+  });
 
-interface VariantsResponse {
-  variants: Variant[];
-  pagination: {
-    total: number;
-    page: number;
-    limit: number;
-    totalPages: number;
+  const response = await fetch(`/api/variants?${params}`);
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(
+      errorData.error || `HTTP ${response.status}: Failed to fetch variants`
+    );
+  }
+
+  const data = await response.json();
+
+  return {
+    items: data.variants || [],
+    pagination: {
+      page: data.pagination?.page || 1,
+      limit: data.pagination?.limit || 10,
+      total: data.pagination?.total || 0,
+      totalPages: data.pagination?.totalPages || 0,
+    },
   };
 }
 
+/**
+ * Create function for new variant
+ */
+async function createVariant(data: Omit<Variant, 'id' | 'created_at'>) {
+  const response = await fetch('/api/variants', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(
+      errorData.error || `HTTP ${response.status}: Failed to create variant`
+    );
+  }
+
+  return await response.json().then((res) => res.variant);
+}
+
+/**
+ * Update function for variant
+ */
+async function updateVariant(id: string, data: Partial<Variant>) {
+  const response = await fetch(`/api/variants/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(
+      errorData.error || `HTTP ${response.status}: Failed to update variant`
+    );
+  }
+
+  return await response.json().then((res) => res.variant);
+}
+
+/**
+ * Delete function for variant
+ */
+async function deleteVariant(id: string) {
+  const response = await fetch(`/api/variants/${id}`, {
+    method: 'DELETE',
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(
+      errorData.error || `HTTP ${response.status}: Failed to delete variant`
+    );
+  }
+}
+
+/**
+ * Main VariantsModule Component
+ */
 export function VariantsModule() {
   const { showToast } = useToast();
-  const [variants, setVariants] = useState<Variant[]>([]);
+
+  // Use the production-grade data table hook
+  const table = useDataTable<Variant>({
+    fetchFn: fetchVariants,
+    createFn: createVariant,
+    updateFn: updateVariant,
+    deleteFn: deleteVariant,
+    pageSize: 10,
+    debounceMs: 300,
+    retryAttempts: 3,
+    syncIntervalMs: 30000,
+    enableOfflineCache: true,
+  });
+
+  // Additional state for models and product types
   const [models, setModels] = useState<Model[]>([]);
   const [productTypes, setProductTypes] = useState<ProductType[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [modelFilter, setModelFilter] = useState('');
-  const [productTypeFilter, setProductTypeFilter] = useState('');
-  const [colorFilter, setColorFilter] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+
+  // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingVariant, setEditingVariant] = useState<Variant | null>(null);
-  const [totalItems, setTotalItems] = useState(0);
-
-  // Fetch variants with useCallback to prevent stale closures
-  const fetchVariants = React.useCallback(async (showLoading = true) => {
-    if (showLoading) setIsLoading(true);
-    try {
-      const params = new URLSearchParams({
-        page: currentPage.toString(),
-        limit: pageSize.toString(),
-        search: searchQuery,
-        model_id: modelFilter,
-        product_type_id: productTypeFilter,
-        color: colorFilter,
-      });
-      const response = await fetch(`/api/variants?${params}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch variants');
-      }
-      const data: VariantsResponse = await response.json();
-      setVariants(data.variants);
-      setTotalItems(data.pagination?.total ?? 0);
-    } catch (error) {
-      console.error('Error fetching variants:', error);
-      showToast('Failed to load variants', 'error');
-    } finally {
-      if (showLoading) setIsLoading(false);
-    }
-  }, [currentPage, pageSize, searchQuery, modelFilter, productTypeFilter, colorFilter, showToast]);
-
-  // Fetch models for dropdown
-  const fetchModels = async () => {
-    try {
-      const response = await fetch('/api/models');
-      if (!response.ok) {
-        throw new Error('Failed to fetch models');
-      }
-      const data: ModelsResponse = await response.json();
-      setModels(data.models);
-    } catch (error) {
-      console.error('Error fetching models:', error);
-    }
-  };
-
-  // Fetch product types for dropdown
-  const fetchProductTypes = async () => {
-    try {
-      const response = await fetch('/api/product-types');
-      if (!response.ok) {
-        throw new Error('Failed to fetch product types');
-      }
-      const data: ProductTypesResponse = await response.json();
-      setProductTypes(data.product_types);
-    } catch (error) {
-      console.error('Error fetching product types:', error);
-    }
-  };
-
-  // Reset to page 1 when search or filters change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQuery, modelFilter, productTypeFilter, colorFilter]);
-
-  useEffect(() => {
-    fetchVariants(true);
-  }, [fetchVariants]);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   // Fetch models and product types on mount
-  useEffect(() => {
+  React.useEffect(() => {
+    const fetchModels = async () => {
+      try {
+        const response = await fetch('/api/models');
+        if (!response.ok) {
+          throw new Error('Failed to fetch models');
+        }
+        const data = await response.json();
+        setModels(data.models || []);
+      } catch (error) {
+        console.error('Error fetching models:', error);
+      }
+    };
+
+    const fetchProductTypes = async () => {
+      try {
+        const response = await fetch('/api/product-types');
+        if (!response.ok) {
+          throw new Error('Failed to fetch product types');
+        }
+        const data = await response.json();
+        setProductTypes(data.product_types || []);
+      } catch (error) {
+        console.error('Error fetching product types:', error);
+      }
+    };
+
     fetchModels();
     fetchProductTypes();
   }, []);
 
-  // Handle create/edit variant
-  const handleSaveVariant = async (variantData: Omit<Variant, 'id' | 'created_at'>) => {
-    try {
-      const url = editingVariant ? `/api/variants/${editingVariant.id}` : '/api/variants';
-      const method = editingVariant ? 'PATCH' : 'POST';
-      
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(variantData),
-      });
+  // Toast notifications for operations
+  const handleShowToast = useCallback(
+    (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+      showToast(message, type);
+    },
+    [showToast]
+  );
 
-      if (!response.ok) {
-        throw new Error('Failed to save variant');
+  // Handle create/edit variant with toast notifications
+  const handleSaveVariant = useCallback(
+    async (formData: VariantFormData) => {
+      try {
+        const variantData: Omit<Variant, 'id' | 'created_at'> = {
+          ...formData,
+          is_active: formData.is_active ?? true,
+        };
+
+        let result;
+
+        if (editingVariant) {
+          // Update existing variant
+          result = await table.update(editingVariant.id, variantData);
+          if (result) {
+            handleShowToast('Variant updated successfully', 'success');
+          } else {
+            handleShowToast('Failed to update variant', 'error');
+          }
+        } else {
+          // Create new variant
+          result = await table.create(variantData);
+          if (result) {
+            handleShowToast('Variant created successfully', 'success');
+          } else {
+            handleShowToast('Failed to create variant', 'error');
+          }
+        }
+
+        if (result) {
+          setIsModalOpen(false);
+          setEditingVariant(null);
+        }
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : 'An error occurred';
+        handleShowToast(message, 'error');
       }
+    },
+    [editingVariant, table, handleShowToast]
+  );
 
-      if (editingVariant) {
-        showToast('Variant updated successfully', 'success');
-      } else {
-        showToast('Variant created successfully', 'success');
-      }
-      setIsModalOpen(false);
-      setEditingVariant(null);
-      setCurrentPage(1);
-      await fetchVariants(false);
-    } catch (error) {
-      console.error('Error saving variant:', error);
-      showToast('Failed to save variant', 'error');
-    }
-  };
-
-  // Handle delete variant
-  const handleDeleteVariant = async (variantId: string) => {
-    try {
-      const response = await fetch(`/api/variants/${variantId}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to delete variant');
-      }
-
-      showToast('Variant deleted successfully', 'success');
-      await fetchVariants(false);
-    } catch (error) {
-      console.error('Error deleting variant:', error);
-      showToast('Failed to delete variant', 'error');
-    }
-  };
-
-  // Show delete confirmation
-  const showDeleteConfirmation = (variantId: string, variantName: string) => {
-    if (window.confirm(`Are you sure you want to delete "${variantName}"?`)) {
-      handleDeleteVariant(variantId);
-    }
-  };
-
-  // Columns for DataTable
-  const columns = [
-    {
-      key: 'image_url',
-      label: 'Image',
-      render: (value: string) => (
-        value ? (
-          <img
-            src={value}
-            alt="Variant"
-            className="w-10 h-10 rounded object-cover"
-          />
-        ) : (
-          <div className="w-10 h-10 rounded bg-gray-200 flex items-center justify-center">
-            <span className="text-sm text-gray-500">No image</span>
-          </div>
+  // Handle delete with confirmation
+  const handleDeleteVariant = useCallback(
+    async (variant: Variant) => {
+      if (
+        !window.confirm(
+          `Are you sure you want to delete "${variant.name}"? This action cannot be undone.`
         )
-      ),
+      ) {
+        return;
+      }
+
+      const success = await table.remove(variant.id);
+      if (success) {
+        handleShowToast('Variant deleted successfully', 'success');
+      } else {
+        handleShowToast('Failed to delete variant', 'error');
+      }
     },
-    {
-      key: 'name',
-      label: 'Variant Name',
+    [table, handleShowToast]
+  );
+
+  // Handle bulk delete
+  const handleBulkDelete = useCallback(
+    async (ids: string[]) => {
+      for (const id of ids) {
+        await table.remove(id);
+      }
+      setSelectedIds(new Set());
+      handleShowToast(`${ids.length} variant(s) deleted successfully`, 'success');
     },
-    {
-      key: 'model',
-      label: 'Model',
-      render: (value: Model) => value?.name || 'N/A',
-    },
-    {
-      key: 'product_type',
-      label: 'Product Type',
-      render: (value: ProductType) => value?.name || 'N/A',
-    },
-    {
-      key: 'color_name',
-      label: 'Color',
-      render: (value: string, variant: Variant) => (
-        <div className="flex items-center space-x-2">
-          <div
-            className="w-6 h-6 rounded border border-gray-200"
-            style={{ backgroundColor: variant.color_hex }}
-          />
-          <span>{value}</span>
-        </div>
-      ),
-    },
-    {
-      key: 'price_modifier',
-      label: 'Price Modifier',
-      render: (value: number) => (value ? `+$${value.toFixed(2)}` : '$0.00'),
-    },
-    {
-      key: 'stock_quantity',
-      label: 'Stock',
-    },
-    {
-      key: 'is_active',
-      label: 'Status',
-      render: (value: boolean) => (
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-          value ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-        }`}>
-          {value ? 'Active' : 'Inactive'}
-        </span>
-      ),
-    },
-  ];
+    [table, handleShowToast]
+  );
+
+  // Handle edit
+  const handleEditVariant = useCallback((variant: Variant) => {
+    setEditingVariant(variant);
+    setIsModalOpen(true);
+  }, []);
+
+  // Handle modal close
+  const handleCloseModal = useCallback(() => {
+    setIsModalOpen(false);
+    setEditingVariant(null);
+  }, []);
+
+  // Define table columns
+  const columns: Column<Variant>[] = useMemo(
+    () => [
+      {
+        key: 'image_url',
+        label: 'Image',
+        width: '80px',
+        render: (value: string) => (
+          value ? (
+            <img
+              src={value}
+              alt="Variant"
+              className="w-10 h-10 rounded object-cover"
+              loading="lazy"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = 'none';
+              }}
+            />
+          ) : (
+            <div className="w-10 h-10 rounded bg-gray-200 flex items-center justify-center">
+              <span className="text-xs text-gray-500">No image</span>
+            </div>
+          )
+        ),
+      },
+      {
+        key: 'name',
+        label: 'Variant Name',
+        sortable: true,
+      },
+      {
+        key: 'model',
+        label: 'Model',
+        render: (value: Model) => (
+          <span className="text-sm text-gray-700">{value?.name || 'N/A'}</span>
+        ),
+      },
+      {
+        key: 'product_type',
+        label: 'Product Type',
+        render: (value: ProductType) => (
+          <span className="text-sm text-gray-700">{value?.name || 'N/A'}</span>
+        ),
+      },
+      {
+        key: 'color_name',
+        label: 'Color',
+        render: (value: string, variant: Variant) => (
+          <div className="flex items-center space-x-2">
+            <div
+              className="w-6 h-6 rounded border border-gray-200 flex-shrink-0"
+              style={{ backgroundColor: variant.color_hex }}
+              title={variant.color_hex}
+            />
+            <span className="text-sm text-gray-700">{value}</span>
+          </div>
+        ),
+      },
+      {
+        key: 'price_modifier',
+        label: 'Price Modifier',
+        align: 'right',
+        render: (value: number) => (
+          <span className="text-sm text-gray-700">
+            {value ? `+$${value.toFixed(2)}` : '$0.00'}
+          </span>
+        ),
+      },
+      {
+        key: 'stock_quantity',
+        label: 'Stock',
+        align: 'center',
+        render: (value: number) => (
+          <span className="text-sm font-medium text-gray-700">{value}</span>
+        ),
+      },
+      {
+        key: 'is_active',
+        label: 'Status',
+        render: (value: boolean) => (
+          <span
+            className={`px-2 py-1 rounded-full text-xs font-medium ${
+              value
+                ? 'bg-green-100 text-green-800'
+                : 'bg-gray-100 text-gray-800'
+            }`}
+          >
+            {value ? 'Active' : 'Inactive'}
+          </span>
+        ),
+      },
+    ],
+    []
+  );
+
+  // Determine empty message based on state
+  const emptyMessage = table.searchQuery
+    ? 'No variants found matching your search'
+    : 'No variants created yet';
+
+  const emptySubMessage = table.searchQuery
+    ? 'Try a different search term'
+    : 'Create your first variant to get started';
 
   return (
-    <div className="space-y-6">
-      {/* Header with search, filters, and add button */}
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1 max-w-md">
-            <SearchBar
-              value={searchQuery}
-              onChange={setSearchQuery}
-              placeholder="Search variants by name..."
-            />
-          </div>
+    <div className="space-y-4">
+      {/* Header with search and add button */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="flex-1">
+          <SearchBar
+            value={table.searchQuery}
+            onChange={table.handleSearch}
+            placeholder="Search variants by name..."
+            disabled={table.isLoading}
+          />
         </div>
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="w-48">
-            <select
-              value={modelFilter}
-              onChange={(e) => setModelFilter(e.target.value)}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-green-500 focus:ring-green-500"
-            >
-              <option value="">All Models</option>
-              {models.map((model) => (
-                <option key={model.id} value={model.id}>
-                  {model.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="w-48">
-            <select
-              value={productTypeFilter}
-              onChange={(e) => setProductTypeFilter(e.target.value)}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-green-500 focus:ring-green-500"
-            >
-              <option value="">All Product Types</option>
-              {productTypes.map((productType) => (
-                <option key={productType.id} value={productType.id}>
-                  {productType.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="w-48">
-            <select
-              value={colorFilter}
-              onChange={(e) => setColorFilter(e.target.value)}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-green-500 focus:ring-green-500"
-            >
-              <option value="">All Colors</option>
-              {[...new Set(variants.map(v => v.color_name))].map((color) => (
-                <option key={color} value={color}>
-                  {color}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-        <div className="flex justify-end">
-          <Button onClick={() => { setEditingVariant(null); setIsModalOpen(true); }}>
-            Add Variant
-          </Button>
-        </div>
+        <button
+          onClick={() => {
+            setEditingVariant(null);
+            setIsModalOpen(true);
+          }}
+          disabled={table.isPerformingAction}
+          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 active:bg-green-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          aria-label="Add new variant"
+        >
+          <span>+</span> Add Variant
+        </button>
       </div>
 
-      {/* Variants table */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-        <HeroUITable
-          columns={columns}
-          data={variants}
-          isLoading={isLoading}
-          isEmpty={variants.length === 0}
-          emptyMessage="No variants found"
-          actions={true}
-          onEdit={(variant) => { setEditingVariant(variant); setIsModalOpen(true); }}
-          onDelete={(variant) => showDeleteConfirmation(variant.id, variant.name)}
-        />
+      {/* Data table with all production features */}
+      <ProductionDataTable
+        columns={columns}
+        data={table.items}
+        isLoading={table.isLoading}
+        isSearching={table.isSearching}
+        isPerformingAction={table.isPerformingAction}
+        error={table.error}
+        isEmpty={table.items.length === 0 && !table.isLoading}
+        emptyMessage={emptyMessage}
+        emptySubMessage={emptySubMessage}
+        onEdit={handleEditVariant}
+        onDelete={handleDeleteVariant}
+        onRetry={table.retry}
+        onSort={table.handleSort}
+        sortBy={table.sortBy}
+        sortOrder={table.sortOrder}
+        selectable={true}
+        selectedIds={selectedIds}
+        onSelectionChange={setSelectedIds}
+        onBulkDelete={handleBulkDelete}
+        showSerialNumber={true}
+        stickyHeader={true}
+      />
 
-        {/* Pagination */}
+      {/* Pagination component */}
+      {table.items.length > 0 && (
         <Pagination
-          currentPage={currentPage}
-          totalPages={Math.ceil(totalItems / pageSize)}
-          totalItems={totalItems}
-          pageSize={pageSize}
-          onPageChange={setCurrentPage}
-          onPageSizeChange={setPageSize}
+          currentPage={table.pagination.page}
+          totalPages={table.pagination.totalPages}
+          totalItems={table.pagination.total}
+          pageSize={table.pagination.limit}
+          onPageChange={table.changePage}
+          onPageSizeChange={table.changePageSize}
         />
-      </div>
+      )}
 
       {/* Modal for create/edit */}
       <Modal
         isOpen={isModalOpen}
-        onClose={() => { setIsModalOpen(false); setEditingVariant(null); }}
+        onClose={handleCloseModal}
         title={editingVariant ? 'Edit Variant' : 'Add Variant'}
         size="xl"
       >
@@ -379,7 +497,7 @@ export function VariantsModule() {
           models={models}
           productTypes={productTypes}
           onSave={handleSaveVariant}
-          onCancel={() => { setIsModalOpen(false); setEditingVariant(null); }}
+          onCancel={handleCloseModal}
         />
       </Modal>
     </div>

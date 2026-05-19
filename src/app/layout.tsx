@@ -4,7 +4,6 @@ import "./globals.css";
 import { CartProvider } from "@/src/context/CartContext";
 import { QueryProvider } from "@/src/components/providers/query-provider";
 import { RouteLoader } from "@/src/components/providers/RouteLoader";
-import { HeroUIProvider } from "@/src/components/providers/heroui-provider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -40,14 +39,12 @@ export default function RootLayout({
       {/* ✓ Changed: Removed flex flex-col, added m-0 p-0, changed min-h-full to h-full */}
       <body className="sunlight-atmosphere m-0 p-0 h-full">
         <div className="sunlight-atmosphere__content">
-          <HeroUIProvider>
-            <RouteLoader />
-            <QueryProvider>
-              <CartProvider>
-                {children}
-              </CartProvider>
-            </QueryProvider>
-          </HeroUIProvider>
+          <RouteLoader />
+          <QueryProvider>
+            <CartProvider>
+              {children}
+            </CartProvider>
+          </QueryProvider>
         </div>
       </body>
     </html>
