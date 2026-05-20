@@ -9,53 +9,88 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/src/lib/supabase/server';
 import { validateAdminAccess } from '@/src/lib/auth/api-auth';
 import { PRODUCT_TYPES } from '@/src/types/products';
-import { createCachedResponse, CACHE_CONTROL } from '@/src/lib/cache/http-cache';
 
 // GET /api/product-types - List all product types
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient();
     const { searchParams } = new URL(request.url);
-    
+
     const page = Math.max(1, parseInt(searchParams.get('page') || '1'));
     const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '50')));
+    const search = searchParams.get('search') || '';
     const active = searchParams.get('active');
-    
+
     const offset = (page - 1) * limit;
-    
-    let query = supabase
+
+    // First, get the total count with all filters applied
+    let countQuery = supabase
       .from('product_types')
-      .select('*', { count: 'planned' })
-      .order('name', { ascending: true })
-      .range(offset, offset + limit - 1);
-    
-    // Apply filters
-    if (active !== null) {
-      query = query.eq('is_active', active === 'true');
+      .select('id', { count: 'exact', head: true });
+
+    if (search) {
+      countQuery = countQuery.ilike('name', `%${search}%`);
     }
-    
-    const { data: product_types, error, count } = await query;
-    
+
+    if (active !== null) {
+      countQuery = countQuery.eq('is_active', active === 'true');
+    }
+
+    const { count: totalCount, error: countError } = await countQuery;
+
+    if (countError) {
+      console.error('Count error:', countError);
+      return NextResponse.json(
+        { error: 'Failed to fetch product types count' },
+        { status: 500 }
+      );
+    }
+
+    // Then get the paginated data
+    let dataQuery = supabase
+      .from('product_types')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (search) {
+      dataQuery = dataQuery.ilike('name', `%${search}%`);
+    }
+
+    if (active !== null) {
+      dataQuery = dataQuery.eq('is_active', active === 'true');
+    }
+
+    const { data: product_types, error } = await dataQuery;
+
     if (error) {
+      console.error('Data fetch error:', error);
       return NextResponse.json(
         { error: 'Failed to fetch product types' },
         { status: 500 }
       );
     }
-    
-    return createCachedResponse({
-      product_types,
+
+    const total = totalCount || 0;
+    const totalPages = Math.ceil(total / limit);
+
+    return NextResponse.json({
+      product_types: product_types || [],
       pagination: {
         page,
         limit,
-        total: count || 0,
-        totalPages: Math.ceil((count || 0) / limit),
+        total,
+        totalPages,
       },
     }, {
-      cacheControl: CACHE_CONTROL.MEDIUM,
-      etag: true,
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      },
     });
   } catch (error) {
+    console.error('GET /api/product-types error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

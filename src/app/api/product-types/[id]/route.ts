@@ -47,8 +47,8 @@ export async function GET(
   }
 }
 
-// PUT /api/product-types/[id] - Update specific product type (Admin only)
-export async function PUT(
+// PATCH /api/product-types/[id] - Update specific product type (Admin only)
+export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -186,7 +186,7 @@ export async function DELETE(
       );
     }
     
-    return NextResponse.json({ message: 'Product type deleted successfully' });
+    return NextResponse.json({ success: true });
   } catch (error) {
     console.error('DELETE /api/product-types/[id] error:', error);
     return NextResponse.json(
