@@ -17,12 +17,13 @@ import { ProductionState } from '@/src/types/production';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const auth = await validateAdminAccess();
     if (!auth.isValid) return auth.response;
 
+    const { id } = await params;
     const supabase = await createClient();
     const body = await request.json();
     const { to_state, reason, operator_id } = body;
@@ -43,7 +44,7 @@ export async function POST(
 
     const manager = new ProductionOrderManager(supabase);
     const result = await manager.transitionState(
-      params.id,
+      id,
       to_state,
       {
         triggered_by: 'admin',

@@ -12,13 +12,13 @@ import { validateAdminAccess } from '@/src/lib/auth/api-auth';
 
 export async function GET(
   _request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const auth = await validateAdminAccess();
     if (!auth.isValid) return auth.response;
 
-    const { id } = params;
+    const { id } = await params;
     const supabase = await createClient();
 
     const { data, error } = await supabase
