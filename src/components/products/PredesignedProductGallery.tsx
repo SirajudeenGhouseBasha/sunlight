@@ -12,6 +12,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
+import { toProxiedUrl } from '@/src/utils/image-url';
 
 // =============================================
 // TYPES
@@ -86,7 +87,7 @@ function ProductCard({ product }: { product: PredesignedProduct }) {
   const [added, setAdded] = useState(false);
 
   const price = calcPrice(product);
-  const imageUrl = product.design_image_url ?? product.variant_image_url ?? null;
+  const imageUrl = toProxiedUrl(product.design_image_url ?? product.variant_image_url ?? null);
 
   const mutation = useMutation({
     mutationFn: () => addToCart(product.id),

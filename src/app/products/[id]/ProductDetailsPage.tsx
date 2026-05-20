@@ -6,6 +6,7 @@ import { ProductGrid } from '@/src/components/optimized/ProductGrid'
 import { ProductGridSkeleton } from '@/src/components/loading/ProductSkeleton'
 import { ProductActions } from '@/src/components/products/ProductActions'
 import { CustomizationEditorWrapper } from '@/src/components/products/CustomizationEditorWrapper'
+import { toProxiedUrl } from '@/src/utils/image-url'
 
 export interface ProductPageProps {
   params: Promise<{
@@ -38,8 +39,8 @@ async function ProductDetails({ id, isCustomizing }: { id: string; isCustomizing
           {/* Customization editor */}
           <CustomizationEditorWrapper
             variantId={product.id}
-            caseImageUrl={product.image_url}
-            maskImageUrl={product.mask_image_url || undefined}
+            caseImageUrl={toProxiedUrl(product.mockup_template_url || product.image_url)}
+            maskImageUrl={product.mask_image_url ? toProxiedUrl(product.mask_image_url) : undefined}
             productName={product.name}
           />
 
@@ -78,7 +79,7 @@ async function ProductDetails({ id, isCustomizing }: { id: string; isCustomizing
           <div className="relative aspect-square overflow-hidden rounded-2xl bg-gray-50 border border-gray-100">
             {product.image_url ? (
               <Image
-                src={product.image_url}
+                src={toProxiedUrl(product.image_url)}
                 alt={product.name}
                 fill
                 className="object-cover"
@@ -101,7 +102,7 @@ async function ProductDetails({ id, isCustomizing }: { id: string; isCustomizing
                   className="relative flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border border-gray-200 bg-gray-50"
                 >
                   <Image
-                    src={imgUrl}
+                    src={toProxiedUrl(imgUrl)}
                     alt={`${product.name} view ${i + 2}`}
                     fill
                     className="object-cover"

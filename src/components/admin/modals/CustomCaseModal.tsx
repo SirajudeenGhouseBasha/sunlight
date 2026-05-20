@@ -172,7 +172,7 @@ function ImageUploadField({
   onClear,
 }: ImageUploadFieldProps) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const displayUrl = previewUrl ?? currentUrl ?? null;
+  const displayUrl = previewUrl ?? (currentUrl ? toProxiedUrl(currentUrl) : null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
