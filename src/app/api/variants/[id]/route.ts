@@ -43,6 +43,7 @@ export async function GET(
       .select(`
         id,
         name,
+        description,
         color_name,
         color_hex,
         price_modifier,
@@ -132,18 +133,22 @@ export async function PATCH(
       price_modifier,
       stock_quantity,
       image_url,
+      mask_image_url,
       additional_images,
       is_active,
+      description,
     } = body;
     
     // Build update object
     const updates: any = {};
     if (name !== undefined) updates.name = name;
+    if (description !== undefined) updates.description = description;
     if (color_name !== undefined) updates.color_name = color_name;
     if (color_hex !== undefined) updates.color_hex = color_hex;
     if (price_modifier !== undefined) updates.price_modifier = price_modifier;
     if (stock_quantity !== undefined) updates.stock_quantity = stock_quantity;
     if (image_url !== undefined) updates.image_url = image_url;
+    if (mask_image_url !== undefined) updates.mask_image_url = mask_image_url;
     if (additional_images !== undefined) updates.additional_images = additional_images;
     if (is_active !== undefined) updates.is_active = is_active;
     

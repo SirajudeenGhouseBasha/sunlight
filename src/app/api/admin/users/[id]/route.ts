@@ -41,11 +41,22 @@ export async function GET(
       );
     }
     
-    const { data: targetUser, error } = await supabase
+    let { data: targetUser, error } = await supabase
       .from('users')
       .select('id, email, full_name, role, is_active, created_at, last_login')
       .eq('id', id)
       .single();
+
+    // Fallback if last_login column doesn't exist yet
+    if (error && error.message?.includes('last_login')) {
+      const fallback = await supabase
+        .from('users')
+        .select('id, email, full_name, role, is_active, created_at')
+        .eq('id', id)
+        .single();
+      targetUser = fallback.data ? { ...fallback.data, last_login: null } : null;
+      error = fallback.error;
+    }
     
     if (error || !targetUser) {
       return NextResponse.json(
@@ -122,13 +133,24 @@ export async function PATCH(
     if (role !== undefined) updates.role = role;
     if (is_active !== undefined) updates.is_active = is_active;
     
-    // Update user
-    const { data: updatedUser, error } = await supabase
+    let { data: updatedUser, error } = await supabase
       .from('users')
       .update(updates)
       .eq('id', id)
       .select('id, email, full_name, role, is_active, created_at, last_login')
       .single();
+
+    // Fallback if last_login column doesn't exist yet
+    if (error && error.message?.includes('last_login')) {
+      const fallback = await supabase
+        .from('users')
+        .update(updates)
+        .eq('id', id)
+        .select('id, email, full_name, role, is_active, created_at')
+        .single();
+      updatedUser = fallback.data ? { ...fallback.data, last_login: null } : null;
+      error = fallback.error;
+    }
     
     if (error) {
       console.error('Error updating user:', error);

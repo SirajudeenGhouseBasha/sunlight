@@ -13,11 +13,10 @@ import { AdminHeader } from '@/src/components/admin/layout/AdminHeader';
 import { AdminContentArea } from '@/src/components/admin/layout/AdminContentArea';
 import { BrandsModule } from '@/src/components/admin/modules/BrandsModule';
 import { ModelsModule } from '@/src/components/admin/modules/ModelsModule';
-import { VariantsModule } from '@/src/components/admin/modules/VariantsModule';
 import { ProductTypesModule } from '@/src/components/admin/modules/ProductTypesModule';
 import { UsersModule } from '@/src/components/admin/modules/UsersModule';
-import { TemplatesModule } from '@/src/components/admin/modules/TemplatesModule';
-import { PredesignedModule } from '@/src/components/admin/modules/PredesignedModule';
+import { CustomCaseVariantModule } from '@/src/components/admin/modules/CustomCaseVariantModule';
+import { PredesignedCaseVariantModule } from '@/src/components/admin/modules/PredesignedCaseVariantModule';
 import { ToastProvider } from '@/src/components/admin/shared/Toast';
 
 const modules = {
@@ -31,30 +30,25 @@ const modules = {
     description: 'Manage phone models',
     component: ModelsModule,
   },
-  variants: {
-    name: 'Variants',
-    description: 'Manage product variants',
-    component: VariantsModule,
-  },
   'product-types': {
     name: 'Product Types',
-    description: 'Manage product types',
+    description: 'Manage product types and base pricing',
     component: ProductTypesModule,
+  },
+  'custom-case': {
+    name: 'Custom Designed Case',
+    description: 'Manage custom designed case variants',
+    component: CustomCaseVariantModule,
+  },
+  'predesigned-case': {
+    name: 'Predesigned Case',
+    description: 'Manage predesigned case variants',
+    component: PredesignedCaseVariantModule,
   },
   users: {
     name: 'Users',
     description: 'Manage user accounts',
     component: UsersModule,
-  },
-  templates: {
-    name: 'Templates',
-    description: 'Manage design templates',
-    component: TemplatesModule,
-  },
-  predesigned: {
-    name: 'Predesigned',
-    description: 'Manage predesigned cases',
-    component: PredesignedModule,
   },
 } as const;
 

@@ -62,7 +62,7 @@ export async function PATCH(
     const supabase = await createClient();
     const body = await request.json();
     
-    const { brand_id, name, model_number, screen_size, release_year } = body;
+    const { brand_id, name, model_number, screen_size, release_year, mockup_template_url, mockup_constraints } = body;
     
     if (!brand_id || !name) {
       return NextResponse.json(
@@ -93,6 +93,8 @@ export async function PATCH(
         model_number,
         screen_size,
         release_year,
+        mockup_template_url,
+        mockup_constraints,
       })
       .eq('id', id)
       .select(`

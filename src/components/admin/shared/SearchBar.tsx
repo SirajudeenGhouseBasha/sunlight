@@ -18,6 +18,8 @@ export interface SearchBarProps {
   debounceMs?: number;
   className?: string;
   disabled?: boolean;
+  /** Accessible label for the search input (used as aria-label) */
+  ariaLabel?: string;
 }
 
 export function SearchBar({
@@ -27,6 +29,7 @@ export function SearchBar({
   debounceMs = 300,
   className,
   disabled = false,
+  ariaLabel,
 }: SearchBarProps) {
   const [localValue, setLocalValue] = useState(value);
 
@@ -83,6 +86,7 @@ export function SearchBar({
           onChange={handleInputChange}
           placeholder={placeholder}
           disabled={disabled}
+          aria-label={ariaLabel ?? placeholder}
           className={cn(
             "pl-10",
             localValue && "pr-10" // Add right padding when there's a value (for clear button)

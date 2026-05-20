@@ -63,6 +63,7 @@ async function fetchModels(options: any) {
     search: options.search || '',
     ...(options.sortBy && { sortBy: options.sortBy }),
     ...(options.sortOrder && { sortOrder: options.sortOrder }),
+    ...(options.brandId && { brand_id: options.brandId }),
   });
 
   const response = await fetch(`/api/models?${params}`);
@@ -149,10 +150,23 @@ async function deleteModel(id: string) {
 export function ModelsModule() {
   const { showToast } = useToast();
   const [brands, setBrands] = useState<Brand[]>([]);
+  const [selectedBrandId, setSelectedBrandId] = useState<string>('');
+
+  // Stable ref so the fetchFn closure always reads the latest brandId
+  const selectedBrandIdRef = React.useRef(selectedBrandId);
+  useEffect(() => {
+    selectedBrandIdRef.current = selectedBrandId;
+  }, [selectedBrandId]);
+
+  // Wrap fetchModels so it always uses the current brand filter
+  const fetchModelsWithFilter = useCallback(
+    (options: any) => fetchModels({ ...options, brandId: selectedBrandIdRef.current }),
+    []
+  );
 
   // Use the production-grade data table hook
   const table = useDataTable<Model>({
-    fetchFn: fetchModels,
+    fetchFn: fetchModelsWithFilter,
     createFn: createModel,
     updateFn: updateModel,
     deleteFn: deleteModel,
@@ -171,7 +185,7 @@ export function ModelsModule() {
   // Fetch brands for dropdown
   const fetchBrands = useCallback(async () => {
     try {
-      const response = await fetch('/api/brands');
+      const response = await fetch('/api/brands?limit=200');
       if (!response.ok) {
         throw new Error('Failed to fetch brands');
       }
@@ -187,6 +201,12 @@ export function ModelsModule() {
   useEffect(() => {
     fetchBrands();
   }, [fetchBrands]);
+
+  // Re-fetch models whenever the brand filter changes
+  useEffect(() => {
+    table.retry();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedBrandId]);
 
   // Toast notifications for operations
   const handleShowToast = useCallback(
@@ -346,15 +366,19 @@ export function ModelsModule() {
   // Determine empty message based on state
   const emptyMessage = table.searchQuery
     ? 'No models found matching your search'
+    : selectedBrandId
+    ? 'No models found for this brand'
     : 'No models created yet';
 
   const emptySubMessage = table.searchQuery
     ? 'Try a different search term'
+    : selectedBrandId
+    ? 'Try selecting a different brand or add a new model'
     : 'Create your first model to get started';
 
   return (
     <div className="space-y-4">
-      {/* Header with search and add button */}
+      {/* Header with search, brand filter, and add button */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         <div className="flex-1">
           <SearchBar
@@ -363,6 +387,23 @@ export function ModelsModule() {
             placeholder="Search models by name..."
             disabled={table.isLoading}
           />
+        </div>
+        {/* Brand filter dropdown */}
+        <div className="w-full sm:w-48">
+          <select
+            value={selectedBrandId}
+            onChange={(e) => setSelectedBrandId(e.target.value)}
+            disabled={table.isLoading || brands.length === 0}
+            className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            aria-label="Filter by brand"
+          >
+            <option value="">All Brands</option>
+            {brands.map((brand) => (
+              <option key={brand.id} value={brand.id}>
+                {brand.name}
+              </option>
+            ))}
+          </select>
         </div>
         <button
           onClick={() => {

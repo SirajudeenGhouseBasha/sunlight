@@ -93,7 +93,9 @@ export async function POST(request: NextRequest) {
       model_number, 
       release_year, 
       screen_size, 
-      dimensions 
+      dimensions,
+      mockup_template_url,
+      mockup_constraints
     } = body;
     
     if (!brand_id || !name) {
@@ -130,6 +132,8 @@ export async function POST(request: NextRequest) {
         release_year,
         screen_size,
         dimensions,
+        mockup_template_url,
+        mockup_constraints,
         is_active: true,
       })
       .select(`

@@ -1,198 +1,136 @@
 /**
  * Orders API Route
- * 
- * Handles order creation and listing
- * Requirements: 6.4, 6.5, 13.1, 13.2 - Order management
+ *
+ * GET  /api/orders  — list user's orders
+ * POST /api/orders  — create order from cart (uses OrderCreator service)
+ *
+ * Requirements: 7.1, 7.2, 7.3, 7.4, 7.5
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/src/lib/supabase/server';
+import { OrderCreator } from '@/src/lib/orders/order-creator';
 
-// GET /api/orders - List user's orders
+// =============================================
+// GET /api/orders
+// =============================================
+
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient();
-    
-    // Get current user
     const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
+
     if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    
+
     const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '20');
+    const page = Math.max(1, parseInt(searchParams.get('page') ?? '1', 10));
+    const limit = Math.min(100, parseInt(searchParams.get('limit') ?? '20', 10));
     const status = searchParams.get('status');
-    
     const offset = (page - 1) * limit;
-    
+
     let query = supabase
       .from('orders')
       .select('*', { count: 'exact' })
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
-    
-    if (status) {
-      query = query.eq('status', status);
-    }
-    
+
+    if (status) query = query.eq('status', status);
+
     const { data: orders, error, count } = await query;
-    
+
     if (error) {
-      return NextResponse.json(
-        { error: 'Failed to fetch orders' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Failed to fetch orders' }, { status: 500 });
     }
-    
+
     return NextResponse.json({
-      orders: orders || [],
+      orders: orders ?? [],
       pagination: {
         page,
         limit,
-        total: count || 0,
-        totalPages: Math.ceil((count || 0) / limit),
+        total: count ?? 0,
+        totalPages: Math.ceil((count ?? 0) / limit),
       },
     });
-  } catch (error) {
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+  } catch {
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
-// POST /api/orders - Create order from cart
+// =============================================
+// POST /api/orders
+// =============================================
+
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
-    
-    // Get current user
     const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
+
     if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    
+
     const body = await request.json();
     const { shipping_address, billing_address, notes } = body;
-    
+
     if (!shipping_address || !billing_address) {
       return NextResponse.json(
-        { error: 'Shipping and billing addresses are required' },
+        { error: 'shipping_address and billing_address are required' },
         { status: 400 }
       );
     }
-    
-    // Get cart items
+
+    // Find the user's cart — cart_items are keyed by user_id directly
+    // OrderCreator.createOrderFromCart expects a cart_id; we use user_id as the cart identifier
+    // since cart_items.user_id is the cart key in this schema.
+    const creator = new OrderCreator(supabase);
+
+    // Validate stock before creating order
     const { data: cartItems, error: cartError } = await supabase
       .from('cart_items')
-      .select(`
-        *,
-        variant:variants(
-          *,
-          model:models(id, name, slug, brand:brands(id, name, slug)),
-          product_type:product_types(id, name, slug, base_price)
-        ),
-        design:designs(id, name, image_url)
-      `)
+      .select('*')
       .eq('user_id', user.id);
-    
-    if (cartError || !cartItems || cartItems.length === 0) {
-      return NextResponse.json(
-        { error: 'Cart is empty' },
-        { status: 400 }
-      );
+
+    if (cartError) {
+      return NextResponse.json({ error: 'Failed to load cart' }, { status: 500 });
     }
-    
-    // Calculate order totals
-    const subtotal = cartItems.reduce((sum, item) => sum + parseFloat(item.total_price.toString()), 0);
-    const totalAmount = subtotal;
-    
-    // Generate order number using database function
-    const { data: orderNumberData, error: orderNumberError } = await supabase
-      .rpc('generate_order_number');
-    
-    if (orderNumberError) {
-      return NextResponse.json(
-        { error: 'Failed to generate order number' },
-        { status: 500 }
-      );
+
+    if (!cartItems || cartItems.length === 0) {
+      return NextResponse.json({ error: 'Cart is empty' }, { status: 400 });
     }
-    
-    // Create order
-    const { data: order, error: orderError } = await supabase
-      .from('orders')
-      .insert({
-        user_id: user.id,
-        order_number: orderNumberData,
-        status: 'pending',
-        payment_status: 'pending',
-        subtotal,
-        tax_amount: 0,
-        shipping_amount: 0,
-        discount_amount: 0,
-        total_amount: totalAmount,
-        shipping_address,
-        billing_address,
-        notes,
-      })
-      .select()
-      .single();
-    
-    if (orderError) {
-      return NextResponse.json(
-        { error: 'Failed to create order' },
-        { status: 500 }
-      );
-    }
-    
-    // Create order items from cart
-    const orderItems = cartItems.map(item => ({
-      order_id: order.id,
-      variant_id: item.variant_id,
-      design_id: item.design_id,
-      product_name: `${item.variant.model.brand.name} ${item.variant.model.name}`,
-      variant_name: `${item.variant.product_type.name} - ${item.variant.color_name}`,
-      design_name: item.design?.name || null,
-      quantity: item.quantity,
-      unit_price: item.unit_price,
-      total_price: item.total_price,
-      customization_options: item.customization_options,
-    }));
-    
-    const { error: itemsError } = await supabase
-      .from('order_items')
-      .insert(orderItems);
-    
-    if (itemsError) {
-      // Rollback order if items creation fails
-      await supabase.from('orders').delete().eq('id', order.id);
-      return NextResponse.json(
-        { error: 'Failed to create order items' },
-        { status: 500 }
-      );
-    }
-    
-    // Clear cart after successful order creation
-    await supabase
-      .from('cart_items')
-      .delete()
-      .eq('user_id', user.id);
-    
-    return NextResponse.json({ order }, { status: 201 });
-  } catch (error) {
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+
+    // Use OrderCreator service — pass user_id as cartId since schema uses user_id
+    const result = await creator.createOrderFromCart(
+      user.id, // cartId (cart_items.user_id)
+      user.id,
+      {
+        shipping_address_id: typeof shipping_address === 'string'
+          ? shipping_address
+          : JSON.stringify(shipping_address),
+        notes: notes ?? undefined,
+      }
     );
+
+    if (!result.success) {
+      // Distinguish stock errors (409) from other failures (422)
+      const isStockError = result.error?.toLowerCase().includes('insufficient stock');
+      return NextResponse.json(
+        { error: result.error },
+        { status: isStockError ? 409 : 422 }
+      );
+    }
+
+    // Fetch the created order to return full details
+    const { data: order } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('id', result.order_id!)
+      .single();
+
+    return NextResponse.json({ order }, { status: 201 });
+  } catch {
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
