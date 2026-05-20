@@ -8,7 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/src/lib/supabase/server';
 
-// GET /api/admin/users - List all users
+// GET /api/admin/users - List all users with pagination, search, and sorting
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient();
@@ -37,12 +37,52 @@ export async function GET(request: NextRequest) {
       );
     }
     
-    // Fetch all users
-    const { data: users, error } = await supabase
+    // Parse query params
+    const { searchParams } = new URL(request.url);
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '10', 10)));
+    const search = searchParams.get('search') || '';
+    const sortBy = searchParams.get('sortBy') || 'created_at';
+    const sortOrder = searchParams.get('sortOrder') || 'desc';
+    const offset = (page - 1) * limit;
+
+    // Allowed sort columns to prevent injection
+    const allowedSortColumns = ['email', 'full_name', 'role', 'created_at', 'last_login'];
+    const safeSortBy = allowedSortColumns.includes(sortBy) ? sortBy : 'created_at';
+    const ascending = sortOrder === 'asc';
+
+    // Build query
+    let query = supabase
       .from('users')
-      .select('id, email, full_name, role, is_active, created_at, last_login')
-      .order('created_at', { ascending: false });
+      .select('id, email, full_name, role, is_active, created_at, last_login', { count: 'exact' });
+
+    // Apply search filter (by email or full_name)
+    if (search) {
+      query = query.or(`email.ilike.%${search}%,full_name.ilike.%${search}%`);
+    }
+
+    // Apply sorting and pagination
+    let { data: users, error, count } = await query
+      .order(safeSortBy, { ascending })
+      .range(offset, offset + limit - 1);
     
+    // If last_login column doesn't exist yet (migration pending), retry without it
+    if (error && error.message?.includes('last_login')) {
+      console.warn('last_login column missing, retrying without it:', error.message);
+      let fallbackQuery = supabase
+        .from('users')
+        .select('id, email, full_name, role, is_active, created_at', { count: 'exact' });
+      if (search) {
+        fallbackQuery = fallbackQuery.or(`email.ilike.%${search}%,full_name.ilike.%${search}%`);
+      }
+      const fallback = await fallbackQuery
+        .order(safeSortBy === 'last_login' ? 'created_at' : safeSortBy, { ascending })
+        .range(offset, offset + limit - 1);
+      users = (fallback.data ?? []).map(u => ({ ...u, last_login: null }));
+      error = fallback.error;
+      count = fallback.count;
+    }
+
     if (error) {
       console.error('Error fetching users:', error);
       return NextResponse.json(
@@ -51,7 +91,18 @@ export async function GET(request: NextRequest) {
       );
     }
     
-    return NextResponse.json({ users });
+    const total = count ?? 0;
+    const totalPages = Math.ceil(total / limit);
+
+    return NextResponse.json({
+      users: users ?? [],
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+      },
+    });
   } catch (error) {
     console.error('Admin users API error:', error);
     return NextResponse.json(

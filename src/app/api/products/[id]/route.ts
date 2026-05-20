@@ -36,6 +36,7 @@ export async function GET(
           slug,
           model_number,
           screen_size,
+          mockup_template_url,
           brand:brands (
             id,
             name,
@@ -81,6 +82,7 @@ export async function GET(
       is_active: v.is_active,
       image_url: v.image_url,
       mask_image_url: v.mask_image_url,
+      mockup_template_url: v.model?.mockup_template_url || null,
       additional_images: v.additional_images || [],
       created_at: v.created_at,
     };

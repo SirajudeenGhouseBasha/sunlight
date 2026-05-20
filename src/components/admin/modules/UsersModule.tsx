@@ -32,7 +32,9 @@ import { ProductionDataTable, Column } from '@/src/components/ui/productionDataT
 export interface User {
   id: string;
   email: string;
+  full_name?: string;
   role: 'user' | 'admin';
+  is_active?: boolean;
   last_login?: string;
   created_at: string;
 }
@@ -40,6 +42,7 @@ export interface User {
 // UserForm data type
 interface UserFormData {
   email: string;
+  full_name?: string;
   role: 'user' | 'admin';
   password?: string;
 }
@@ -173,6 +176,7 @@ export function UsersModule() {
       try {
         const userData: Omit<User, 'id' | 'created_at'> & { password?: string } = {
           email: formData.email,
+          full_name: formData.full_name,
           role: formData.role,
           ...(formData.password && { password: formData.password }),
         };
@@ -261,16 +265,21 @@ export function UsersModule() {
     () => [
       {
         key: 'email',
-        label: 'Email',
-        width: '250px',
-        render: (value: string) => (
+        label: 'User',
+        width: '280px',
+        render: (value: string, user: User) => (
           <div className="flex items-center space-x-2">
             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-100 to-blue-50 flex items-center justify-center flex-shrink-0">
               <span className="text-sm font-bold text-blue-600">
-                {value.charAt(0).toUpperCase()}
+                {(user.full_name || value).charAt(0).toUpperCase()}
               </span>
             </div>
-            <p className="font-medium text-gray-900 truncate">{value}</p>
+            <div className="flex-1 min-w-0">
+              {user.full_name && (
+                <p className="font-medium text-gray-900 truncate">{user.full_name}</p>
+              )}
+              <p className={`truncate ${user.full_name ? 'text-xs text-gray-500' : 'font-medium text-gray-900'}`}>{value}</p>
+            </div>
           </div>
         ),
       },
@@ -287,6 +296,22 @@ export function UsersModule() {
             }`}
           >
             {value === 'admin' ? 'Admin' : 'User'}
+          </span>
+        ),
+      },
+      {
+        key: 'is_active',
+        label: 'Status',
+        width: '100px',
+        render: (value: boolean) => (
+          <span
+            className={`px-3 py-1 rounded-full text-xs font-semibold inline-block ${
+              value !== false
+                ? 'bg-green-100 text-green-800'
+                : 'bg-red-100 text-red-800'
+            }`}
+          >
+            {value !== false ? 'Active' : 'Inactive'}
           </span>
         ),
       },
@@ -358,7 +383,7 @@ export function UsersModule() {
           <SearchBar
             value={table.searchQuery}
             onChange={table.handleSearch}
-            placeholder="Search users by email..."
+            placeholder="Search users by name or email..."
             disabled={table.isLoading}
           />
         </div>

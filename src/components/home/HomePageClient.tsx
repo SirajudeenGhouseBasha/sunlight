@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { MainNav } from '@/src/components/navigation/MainNav';
 import { motion, useInView as useFramerInView } from 'framer-motion';
 import { Check, Palette, Sparkle, Sparkles, Star } from 'lucide-react';
+import { PredesignedProductGallery } from '@/src/components/products/PredesignedProductGallery';
 
 const CARD_SURFACE = 'rgba(255, 255, 255, 0.28)';
 const CARD_SURFACE_HOVER = 'rgba(255, 255, 255, 0.42)';
@@ -681,6 +682,30 @@ export function HomePageClientAdvanced({
         </div>
       </section>
 
+
+      {/* ─── FEATURED PREDESIGNED ─── */}
+      <section style={{
+        padding: 'clamp(40px, 8vw, 60px) clamp(20px, 5vw, 40px)',
+        background: 'transparent',
+        borderBottom: '1px solid rgba(0,0,0,0.05)',
+      }}>
+        <div style={{ maxWidth: '1280px', margin: '0 auto' }}>
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            style={{ marginBottom: 'clamp(32px, 6vw, 48px)' }}
+          >
+            <div style={{ fontSize: 'clamp(10px, 2vw, 12px)', color: '#999', fontWeight: 600, letterSpacing: '1px', marginBottom: '12px', textTransform: 'uppercase' }}>
+              READY TO SHIP
+            </div>
+            <h2 style={{ fontSize: 'clamp(24px, 5vw, 40px)', fontWeight: 900, lineHeight: 1.1, letterSpacing: '-1px', color: '#000', margin: 0 }}>
+              Featured Designs
+            </h2>
+          </motion.div>
+          <PredesignedProductGallery featuredOnly limit={8} showViewAll />
+        </div>
+      </section>
 
       {/* ─── SHOP BY TYPE ─── */}
       {productTypes.length > 0 && (

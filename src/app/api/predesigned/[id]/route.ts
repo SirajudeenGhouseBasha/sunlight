@@ -15,70 +15,32 @@ export async function GET(
   try {
     const { id } = await params;
     const supabase = await createClient();
-    
+
     const { data: predesignedProduct, error } = await supabase
       .from('predesigned_products')
       .select(`
         *,
-        variant:variants (
-          id,
-          sku,
-          color_name,
-          color_hex,
-          price,
-          stock_quantity,
-          image_url,
-          product_type:product_types (
-            id,
-            name,
-            base_price,
-            description,
-            material,
-            finish
-          ),
-          model:models (
-            id,
-            name,
-            screen_size,
-            brand:brands (
-              id,
-              name,
-              logo_url
-            )
-          )
-        ),
-        design:designs (
-          id,
-          name,
-          description,
-          image_url,
-          thumbnail_url,
-          category,
-          tags,
-          usage_count
-        )
+        brand:brands ( id, name ),
+        model:models ( id, name ),
+        product_type:product_types ( id, name, base_price )
       `)
       .eq('id', id)
       .single();
-    
+
     if (error || !predesignedProduct) {
       return NextResponse.json(
         { error: 'Predesigned product not found' },
         { status: 404 }
       );
     }
-    
-    // Calculate final price
-    const final_price = predesignedProduct.price_override || 
-                       predesignedProduct.variant?.price || 
-                       predesignedProduct.variant?.product_type?.base_price || 
-                       0;
-    
+
+    const final_price =
+      predesignedProduct.price_override ??
+      predesignedProduct.product_type?.base_price ??
+      0;
+
     return NextResponse.json({
-      predesigned_product: {
-        ...predesignedProduct,
-        final_price,
-      },
+      predesigned_product: { ...predesignedProduct, final_price },
     });
   } catch (error) {
     console.error('Get predesigned product error:', error);
@@ -127,20 +89,30 @@ export async function PATCH(
       name,
       description,
       price_override,
+      color_name,
+      color_hex,
+      design_image_url,
+      variant_image_url,
+      additional_image_urls,
       is_featured,
       is_active,
       display_order,
     } = body;
-    
+
     // Build update object
-    const updates: any = {};
+    const updates: Record<string, unknown> = {};
     if (name !== undefined) updates.name = name;
     if (description !== undefined) updates.description = description;
     if (price_override !== undefined) updates.price_override = price_override;
+    if (color_name !== undefined) updates.color_name = color_name;
+    if (color_hex !== undefined) updates.color_hex = color_hex;
+    if (design_image_url !== undefined) updates.design_image_url = design_image_url;
+    if (variant_image_url !== undefined) updates.variant_image_url = variant_image_url;
+    if (additional_image_urls !== undefined) updates.additional_image_urls = additional_image_urls;
     if (is_featured !== undefined) updates.is_featured = is_featured;
     if (is_active !== undefined) updates.is_active = is_active;
     if (display_order !== undefined) updates.display_order = display_order;
-    
+
     // Update predesigned product
     const { data: predesignedProduct, error } = await supabase
       .from('predesigned_products')
@@ -148,23 +120,9 @@ export async function PATCH(
       .eq('id', id)
       .select(`
         *,
-        variant:variants (
-          id,
-          sku,
-          color_name,
-          price,
-          model:models (
-            name,
-            brand:brands (
-              name
-            )
-          )
-        ),
-        design:designs (
-          id,
-          name,
-          image_url
-        )
+        brand:brands ( id, name ),
+        model:models ( id, name ),
+        product_type:product_types ( id, name, base_price )
       `)
       .single();
     

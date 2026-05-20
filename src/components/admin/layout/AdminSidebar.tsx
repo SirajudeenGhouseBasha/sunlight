@@ -12,21 +12,34 @@
 import React, { useEffect } from 'react';
 import { cn } from '@/src/lib/utils';
 
-const navigation = {
-  catalogue: [
-    { name: 'Brands',        key: 'brands',        icon: '🏷️' },
-    { name: 'Models',        key: 'models',        icon: '📱' },
-    { name: 'Variants',      key: 'variants',      icon: '🎨' },
-    { name: 'Product Types', key: 'product-types', icon: '📦' },
-    { name: 'Predesigned',   key: 'predesigned',   icon: '✨' },
-  ],
-  operations: [
-    { name: 'Users',     key: 'users',     icon: '👥' },
-  ],
-  design: [
-    { name: 'Templates', key: 'templates', icon: '🖼️' },
-  ],
-};
+const navigation = [
+  {
+    label: 'Section 1 — Catalogue',
+    items: [
+      { name: 'Brands',         key: 'brands',         icon: '🏷️' },
+      { name: 'Models',         key: 'models',         icon: '📱' },
+    ],
+  },
+   {
+    label: 'Section 2 — Product Type',
+    items: [
+      { name: 'Product Types',  key: 'product-types',  icon: '📦' },
+    ],
+  },
+  {
+    label: 'Section 3 — Cases',
+    items: [
+      { name: 'Custom Designed Case',  key: 'custom-case',      icon: '🎨' },
+      { name: 'Predesigned Case',      key: 'predesigned-case', icon: '✨' },
+    ],
+  },
+  {
+    label: 'Section 4 — Users',
+    items: [
+      { name: 'Users', key: 'users', icon: '👥' },
+    ],
+  },
+];
 
 export interface AdminSidebarProps {
   activeModule?: string;
@@ -84,37 +97,37 @@ export function AdminSidebar({
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto py-4 px-3">
-        {(
-          [
-            { label: 'Catalogue',  items: navigation.catalogue  },
-            { label: 'Operations', items: navigation.operations },
-            { label: 'Design',     items: navigation.design     },
-          ] as const
-        ).map(({ label, items }) => (
-          <div key={label} className="mb-5">
-            <p className="px-2 mb-1.5 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
-              {label}
-            </p>
-            <ul className="space-y-0.5">
-              {items.map((item) => (
-                <li key={item.key}>
-                  <button
-                    onClick={() => handleClick(item.key)}
-                    aria-current={isActive(item.key) ? 'page' : undefined}
-                    className={cn(
-                      'flex items-center w-full gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-colors',
-                      isActive(item.key)
-                        ? 'bg-green-600 text-white shadow-sm'
-                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 active:bg-gray-200',
-                    )}
-                  >
-                    <span className="text-base leading-none">{item.icon}</span>
-                    {item.name}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
+        {navigation.map(({ label, items }, sectionIndex) => (
+          <React.Fragment key={label}>
+            {/* Visual divider between sections */}
+            {sectionIndex > 0 && (
+              <hr className="my-3 border-gray-200" />
+            )}
+            <div className="mb-2">
+              <p className="px-2 mb-1.5 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
+                {label}
+              </p>
+              <ul className="space-y-0.5">
+                {items.map((item) => (
+                  <li key={item.key}>
+                    <button
+                      onClick={() => handleClick(item.key)}
+                      aria-current={isActive(item.key) ? 'page' : undefined}
+                      className={cn(
+                        'flex items-center w-full gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-colors',
+                        isActive(item.key)
+                          ? 'bg-green-600 text-white shadow-sm'
+                          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 active:bg-gray-200',
+                      )}
+                    >
+                      <span className="text-base leading-none">{item.icon}</span>
+                      {item.name}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </React.Fragment>
         ))}
       </nav>
 

@@ -1,80 +1,73 @@
 /**
- * Image Upload API Route
- * 
- * Handles image uploads to AWS S3
- * Requirements: 4.1, 4.2, 4.3 - Image upload and storage
+ * Upload API Route
+ *
+ * Handles file uploads to AWS S3
+ * Supports mockup template images and other file types
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/src/lib/supabase/server';
-import { uploadDesignImage, uploadProductImage, ALLOWED_IMAGE_TYPES, MAX_IMAGE_SIZE } from '@/src/lib/storage/s3';
+import { uploadProductImage } from '@/src/lib/storage/s3';
 
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
-    
-    // Get current user
+
+    // Check authentication
     const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
+
     if (authError || !user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       );
     }
-    
-    // Get form data
+
+    // Parse form data
     const formData = await request.formData();
     const file = formData.get('file') as File;
-    const type = formData.get('type') as string || 'design'; // 'design' or 'product'
-    
+
     if (!file) {
       return NextResponse.json(
         { error: 'No file provided' },
         { status: 400 }
       );
     }
-    
+
     // Validate file type
-    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml'];
+    if (!allowedTypes.includes(file.type)) {
       return NextResponse.json(
-        { error: 'Invalid file type. Allowed: JPG, PNG, WebP, GIF' },
+        { error: 'Invalid file type. Only JPEG, PNG, WebP, and SVG images are allowed.' },
         { status: 400 }
       );
     }
-    
-    // Validate file size
-    if (file.size > MAX_IMAGE_SIZE) {
+
+    // Validate file size (10MB max)
+    if (file.size > 10 * 1024 * 1024) {
       return NextResponse.json(
-        { error: `File size must be less than ${MAX_IMAGE_SIZE / 1024 / 1024}MB` },
+        { error: 'File size exceeds 10MB limit' },
         { status: 400 }
       );
     }
-    
+
     // Convert file to buffer
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
-    
-    // Upload to S3 based on type
-    let uploadResult;
-    if (type === 'product') {
-      uploadResult = await uploadProductImage(buffer, file.name, file.type);
-    } else {
-      uploadResult = await uploadDesignImage(buffer, file.name, file.type, user.id);
-    }
-    
+
+    // Upload to S3
+    const { url, key } = await uploadProductImage(buffer, file.name, file.type);
+
     return NextResponse.json({
       success: true,
-      url: uploadResult.url,
-      key: uploadResult.key,
-      file_size: file.size,
-      file_name: file.name,
-      mime_type: file.type,
+      url,
+      fileName: key,
     });
-  } catch (error: any) {
-    console.error('Upload error:', error);
+
+  } catch (error) {
+    console.error('Upload API error:', error);
     return NextResponse.json(
-      { error: error.message || 'Internal server error' },
+      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

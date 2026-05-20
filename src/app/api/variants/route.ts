@@ -95,7 +95,8 @@ export async function POST(request: NextRequest) {
       price_modifier,
       stock_quantity,
       image_url,
-      additional_images
+      additional_images,
+      description,
     } = body;
     
     if (!model_id || !product_type_id || !color_name || price_modifier === undefined) {
@@ -150,6 +151,7 @@ export async function POST(request: NextRequest) {
         name: variantName,
         color_name,
         color_hex,
+        description: description || null,
         price_modifier: price_modifier || 0,
         stock_quantity: stock_quantity || 0,
         image_url: image_url || null,

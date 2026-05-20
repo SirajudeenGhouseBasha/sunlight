@@ -25,7 +25,7 @@ interface ToastProps {
 
 function Toast({ toast, onDismiss }: ToastProps) {
   useEffect(() => {
-    const timer = setTimeout(() => onDismiss(toast.id), 3000);
+    const timer = setTimeout(() => onDismiss(toast.id), 5000);
     return () => clearTimeout(timer);
   }, [toast.id, onDismiss]);
 
