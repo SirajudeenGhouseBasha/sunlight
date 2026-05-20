@@ -12,7 +12,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { ProductionOrderManager } from '../src/lib/production/production-order-manager';
 import { PrintQueueService } from '../src/lib/production/print-queue';
-import { ProductionState } from '../src/types/production';
+import { ProductionState, ProductType } from '../src/types/production';
 import { validateTransition, getValidNextStates } from '../src/lib/production/state-machine';
 
 // =============================================
@@ -198,14 +198,14 @@ async function testPrintQueue() {
   
   try {
     // Get queue items
-    const queueResult = await printQueue.getQueue(10);
+    const queueResult = await printQueue.getPrintQueueItems(10);
     
     if (queueResult.success) {
       logTest(`Print queue fetch (${queueResult.data?.length ?? 0} items)`, true);
       
       if (queueResult.data && queueResult.data.length > 0) {
         // Test processing (dry run)
-        const processResult = await printQueue.processQueue(1);
+        const processResult = await printQueue.processPrintQueue(1);
         
         if (processResult.success) {
           logTest(
