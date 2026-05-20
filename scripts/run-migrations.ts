@@ -41,6 +41,11 @@ async function runMigrations() {
   for (const migration of migrations) {
     process.stdout.write(`  → ${migration.name} ... `);
     try {
+      // Ensure SERVICE_ROLE_KEY is defined
+      if (!SERVICE_ROLE_KEY) {
+        throw new Error('SERVICE_ROLE_KEY is not defined');
+      }
+
       // Use the Supabase SQL endpoint via fetch with service role
       const res = await fetch(`${SUPABASE_URL}/rest/v1/`, {
         method: 'HEAD',

@@ -11,7 +11,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { ProductionOrderManager } from '../src/lib/production/production-order-manager';
-import { PrintQueue } from '../src/lib/production/print-queue';
+import { PrintQueueService } from '../src/lib/production/print-queue';
 import { ProductionState } from '../src/types/production';
 import { validateTransition, getValidNextStates } from '../src/lib/production/state-machine';
 
@@ -29,7 +29,7 @@ if (!supabaseUrl || !supabaseServiceKey) {
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 const manager = new ProductionOrderManager(supabase);
-const printQueue = new PrintQueue(supabase);
+const printQueue = new PrintQueueService(supabase);
 
 // =============================================
 // TEST CASES
@@ -117,7 +117,7 @@ async function testProductionOrderCreation() {
       order_id: orders[0].id,
       order_item_id: `test-item-${Date.now()}`,
       variant_id: variants[0].id,
-      product_type: 'predesigned',
+      product_type: ProductType.PREDESIGNED,
       design_id: null,
       customization_data: null,
       print_file_url: null,
@@ -252,7 +252,7 @@ async function testRetryMechanism() {
           order_id: orders[0].id,
           order_item_id: `retry-test-${Date.now()}`,
           variant_id: variants[0].id,
-          product_type: 'predesigned',
+          product_type: ProductType.PREDESIGNED,
           design_id: null,
           customization_data: null,
           print_file_url: null,

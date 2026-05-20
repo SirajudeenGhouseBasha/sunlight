@@ -16,19 +16,20 @@ import { ProductionOrderManager } from '@/src/lib/production/production-order-ma
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const auth = await validateAdminAccess();
     if (!auth.isValid) return auth.response;
 
+    const { id } = await params;
     const supabase = await createClient();
     const body = await request.json().catch(() => ({}));
     const { operator_id } = body;
 
     const manager = new ProductionOrderManager(supabase);
     const result = await manager.retry(
-      params.id,
+      id,
       {
         triggered_by: 'admin',
         reason: 'Manual retry by admin',
