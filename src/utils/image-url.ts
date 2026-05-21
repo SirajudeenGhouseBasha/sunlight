@@ -33,11 +33,16 @@ export function toProxiedUrl(url: string | null | undefined): string {
   // Already a proxied URL — pass through
   if (url.startsWith('/api/image-proxy')) return url;
 
+  // Placeholder URLs (via.placeholder.com, etc.) — pass through without proxying
+  if (url.includes('placeholder.com') || url.includes('unsplash.com') || url.includes('bing.com')) {
+    return url;
+  }
+
   // S3 URL — proxy it
   if (isS3Url(url)) {
     return `/api/image-proxy?url=${encodeURIComponent(url)}`;
   }
 
-  // External URL (Supabase storage, Unsplash, etc.) — pass through
+  // External URL (Supabase storage, etc.) — pass through
   return url;
 }

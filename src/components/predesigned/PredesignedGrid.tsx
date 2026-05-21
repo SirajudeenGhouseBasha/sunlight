@@ -86,7 +86,7 @@ function PredesignedCard({ product, index }: { product: PredesignedProduct; inde
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <Link href={`/products/${product.variant_id}?design=${product.design_id}`}>
+      <Link href={`/predesigned/${product.id}`}>
         <div className="bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100">
           {/* Image Container */}
           <div className="relative aspect-square overflow-hidden bg-gray-50">
@@ -128,7 +128,7 @@ function PredesignedCard({ product, index }: { product: PredesignedProduct; inde
                 <Heart size={16} fill={isLiked ? 'currentColor' : 'none'} />
               </button>
               <Link 
-                href={`/products/${product.variant_id}?design=${product.design_id}`}
+                href={`/predesigned/${product.id}`}
                 className="p-2 rounded-full bg-white/80 text-gray-700 hover:bg-white backdrop-blur-sm transition-colors"
               >
                 <Eye size={16} />
