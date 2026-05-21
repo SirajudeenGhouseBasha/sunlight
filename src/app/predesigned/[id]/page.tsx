@@ -5,6 +5,9 @@ import Image from 'next/image'
 import { createClient } from '@/src/lib/supabase/server'
 import { ProductActions } from '@/src/components/products/ProductActions'
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic'
+
 export interface PredesignedProductPageProps {
   params: Promise<{
     id: string
