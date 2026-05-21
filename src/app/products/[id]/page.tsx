@@ -1,6 +1,8 @@
 import { createClient } from '@/src/lib/supabase/server'
 import { ProductPageProps } from './ProductDetailsPage'
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic'
 export const revalidate = 300 // Revalidate every 5 minutes
 
 export { default } from './ProductDetailsPage'

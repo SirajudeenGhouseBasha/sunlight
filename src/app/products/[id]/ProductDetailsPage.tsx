@@ -1,5 +1,6 @@
 import { Suspense } from 'react'
 import { notFound } from 'next/navigation'
+import Link from 'next/link'
 import Image from 'next/image'
 import { createClient } from '@/src/lib/supabase/server'
 import { ProductGrid } from '@/src/components/optimized/ProductGrid'
@@ -7,6 +8,9 @@ import { ProductGridSkeleton } from '@/src/components/loading/ProductSkeleton'
 import { ProductActions } from '@/src/components/products/ProductActions'
 import { CustomizationEditorWrapper } from '@/src/components/products/CustomizationEditorWrapper'
 import { toProxiedUrl } from '@/src/utils/image-url'
+
+// Force dynamic rendering for this page
+export const dynamic = 'force-dynamic'
 
 export interface ProductPageProps {
   params: Promise<{
@@ -152,7 +156,20 @@ async function ProductDetails({ id, isCustomizing }: { id: string; isCustomizing
     
     if (!product) {
       console.error('[ProductDetails] Product not found for ID:', id)
-      notFound()
+      return (
+        <div className="container mx-auto px-4 py-8">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+            <h2 className="text-xl font-bold text-red-900 mb-2">Product Not Found</h2>
+            <p className="text-red-700">Could not load product with ID: {id}</p>
+            <p className="text-sm text-red-600 mt-2">This might be due to:</p>
+            <ul className="list-disc list-inside text-sm text-red-600 mt-1">
+              <li>Product doesn't exist in database</li>
+              <li>Database connection issue</li>
+              <li>Missing environment variables</li>
+            </ul>
+          </div>
+        </div>
+      )
     }
     
     console.log('[ProductDetails] Product loaded successfully:', product.name)
@@ -358,7 +375,33 @@ async function ProductDetails({ id, isCustomizing }: { id: string; isCustomizing
       message: error instanceof Error ? error.message : 'Unknown error',
       stack: error instanceof Error ? error.stack : 'No stack trace'
     })
-    notFound()
+    
+    // Return error UI instead of throwing
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+          <h2 className="text-xl font-bold text-red-900 mb-2">Error Loading Product</h2>
+          <p className="text-red-700 mb-4">An error occurred while loading the product.</p>
+          <div className="bg-white rounded p-4 mb-4">
+            <p className="text-sm font-mono text-gray-800">
+              {error instanceof Error ? error.message : String(error)}
+            </p>
+          </div>
+          <p className="text-sm text-red-600">Common causes:</p>
+          <ul className="list-disc list-inside text-sm text-red-600 mt-1">
+            <li>Missing NEXT_PUBLIC_SUPABASE_URL environment variable</li>
+            <li>Missing NEXT_PUBLIC_SUPABASE_ANON_KEY environment variable</li>
+            <li>Database connection failed</li>
+            <li>Invalid product ID</li>
+          </ul>
+          <div className="mt-4">
+            <Link href="/products" className="text-blue-600 hover:text-blue-800 underline">
+              ← Back to Products
+            </Link>
+          </div>
+        </div>
+      </div>
+    )
   }
 }
 
