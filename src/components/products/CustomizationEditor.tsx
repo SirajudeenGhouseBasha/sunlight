@@ -30,6 +30,7 @@ import {
   X,
   FlipHorizontal,
   Maximize,
+  ZoomIn,
 } from 'lucide-react';
 
 /* ------------------------------------------------------------------ */
@@ -81,6 +82,11 @@ interface CustomizationEditorProps {
 
 const CANVAS_WIDTH = 340;
 const CANVAS_HEIGHT = 560;
+
+/** Scale a value from logical canvas space to display space */
+const toDisplay = (v: number, scale: number) => v * scale;
+/** Scale a value from display space back to logical canvas space */
+const toLogical = (v: number, scale: number) => v / scale;
 
 const FONT_OPTIONS = [
   'Inter, sans-serif',
@@ -282,201 +288,231 @@ export function CustomizationEditor({
           </div>
 
           {/*
-            Outer ref container: used only to measure available width for
-            computing `scale`. It must NOT have overflow:hidden or
-            touch-action set here, otherwise scaling math breaks.
+            Outer ref container: measures available width so we can compute
+            `scale`. The canvas renders at scaledW × scaledH — no CSS
+            transform is used, so react-rnd coordinate math stays correct
+            on all screen sizes including mobile touch.
           */}
           <div ref={containerRef} className="w-full flex justify-center">
-            {/*
-              Scale wrapper: visually shrinks the canvas on mobile while
-              keeping the internal coordinate space at 340×560 so that
-              react-rnd positions and sizes remain correct.
-            */}
             <div
-              style={{
-                width: scaledW,
-                height: scaledH,
-                // Reserve the correct amount of space in the layout
-              }}
+              id="customization-canvas-wrapper"
+              style={{ width: scaledW, height: scaledH }}
             >
               <div
-                id="customization-canvas-wrapper"
-                style={{
-                  width: CANVAS_WIDTH,
-                  height: CANVAS_HEIGHT,
-                  transformOrigin: 'top left',
-                  transform: `scale(${scale})`,
+                id="customization-canvas"
+                className="relative rounded-2xl overflow-hidden shadow-xl border-2 border-gray-200 bg-gray-100"
+                style={{ width: scaledW, height: scaledH }}
+                onPointerDown={(e) => {
+                  // Deselect when tapping the bare canvas (not an element)
+                  if (e.target === e.currentTarget) {
+                    setSelectedId(null);
+                  }
                 }}
               >
-                <div
-                  id="customization-canvas"
-                  className="relative rounded-2xl overflow-hidden shadow-xl border-2 border-gray-200 bg-gray-100"
-                  style={{ width: CANVAS_WIDTH, height: CANVAS_HEIGHT }}
-                  onPointerDown={(e) => {
-                    // Deselect when tapping the bare canvas (not an element)
-                    if (e.target === e.currentTarget) {
-                      setSelectedId(null);
+                {/* Layer 1: Case mockup background */}
+                {caseImageUrl ? (
+                  <img
+                    src={caseImageUrl}
+                    alt="Case mockup"
+                    className="absolute inset-0 w-full h-full object-cover pointer-events-none z-0"
+                    draggable={false}
+                  />
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-b from-gray-200 to-gray-300 z-0">
+                    <span className="text-7xl opacity-30">📱</span>
+                  </div>
+                )}
+
+                {/* Layer 3: Transparent Mask Overlay */}
+                {(maskImageUrl || caseImageUrl) && (
+                  <img
+                    src={maskImageUrl || caseImageUrl}
+                    alt="Case overlay mask"
+                    className="absolute inset-0 w-full h-full object-cover pointer-events-none z-30 drop-shadow-sm"
+                    style={{ mixBlendMode: maskImageUrl ? 'normal' : 'multiply' }}
+                    draggable={false}
+                  />
+                )}
+
+                {/* Layer 2: Editable elements
+                    All positions/sizes are stored in logical (340×560) space
+                    and converted to display space via `scale` before passing
+                    to Rnd. Callbacks convert back to logical space so the
+                    stored values are always scale-independent.
+                */}
+                {elements.map((el) => (
+                  <Rnd
+                    key={el.id}
+                    size={{
+                      width: toDisplay(el.width, scale),
+                      height: toDisplay(el.height, scale),
+                    }}
+                    position={{
+                      x: toDisplay(el.x, scale),
+                      y: toDisplay(el.y, scale),
+                    }}
+                    bounds="parent"
+                    lockAspectRatio={el.type === 'image'}
+                    enableUserSelectHack={false}
+                    cancel=""
+                    onPointerDown={(e: React.PointerEvent) => {
+                      e.stopPropagation();
+                      setSelectedId((prev) => (prev === el.id ? null : el.id));
+                    }}
+                    onDragStart={() => {
+                      setSelectedId(el.id);
+                    }}
+                    onDrag={(_e: unknown, d: { x: number; y: number }) => {
+                      updateElement(el.id, {
+                        x: toLogical(d.x, scale),
+                        y: toLogical(d.y, scale),
+                      });
+                    }}
+                    onDragStop={(_e: unknown, d: { x: number; y: number }) => {
+                      updateElement(el.id, {
+                        x: toLogical(d.x, scale),
+                        y: toLogical(d.y, scale),
+                      });
+                    }}
+                    onResize={(
+                      _e: unknown,
+                      _direction: unknown,
+                      ref: HTMLElement,
+                      _delta: unknown,
+                      position: { x: number; y: number }
+                    ) => {
+                      updateElement(el.id, {
+                        width: toLogical(parseFloat(ref.style.width), scale),
+                        height: toLogical(parseFloat(ref.style.height), scale),
+                        x: toLogical(position.x, scale),
+                        y: toLogical(position.y, scale),
+                      });
+                    }}
+                    onResizeStop={(
+                      _e: unknown,
+                      _direction: unknown,
+                      ref: HTMLElement,
+                      _delta: unknown,
+                      position: { x: number; y: number }
+                    ) => {
+                      updateElement(el.id, {
+                        width: toLogical(parseFloat(ref.style.width), scale),
+                        height: toLogical(parseFloat(ref.style.height), scale),
+                        x: toLogical(position.x, scale),
+                        y: toLogical(position.y, scale),
+                      });
+                    }}
+                    className={
+                      selectedId === el.id
+                        ? 'ring-2 ring-orange-500 ring-offset-1'
+                        : ''
                     }
-                  }}
-                >
-                  {/* Layer 1: Case mockup background */}
-                  {caseImageUrl ? (
-                    <img
-                      src={caseImageUrl}
-                      alt="Case mockup"
-                      className="absolute inset-0 w-full h-full object-cover pointer-events-none z-0"
-                      draggable={false}
-                    />
-                  ) : (
-                    <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-b from-gray-200 to-gray-300 z-0">
-                      <span className="text-7xl opacity-30">📱</span>
-                    </div>
-                  )}
+                    enableResizing={selectedId === el.id}
+                    style={{
+                      zIndex: selectedId === el.id ? 20 : 10,
+                      touchAction: 'none',
+                      cursor: 'move',
+                    }}
+                    resizeHandleComponent={
+                      selectedId === el.id
+                        ? {
+                            bottomRight: <ResizeHandle />,
+                            bottomLeft: <ResizeHandle />,
+                            topRight: <ResizeHandle />,
+                            topLeft: <ResizeHandle />,
+                          }
+                        : {}
+                    }
+                  >
+                    {el.type === 'image' ? (
+                      <img
+                        src={el.src}
+                        alt="Custom upload"
+                        className="w-full h-full object-contain pointer-events-none select-none"
+                        draggable={false}
+                        style={{
+                          filter: `contrast(${el.contrast ?? 100}%) brightness(${el.brightness ?? 100}%) saturate(${el.saturate ?? 100}%)`,
+                          transform: el.flipX ? 'scaleX(-1)' : 'scaleX(1)',
+                          touchAction: 'none',
+                        }}
+                      />
+                    ) : (
+                      <div
+                        className="w-full h-full flex items-center justify-center select-none"
+                        style={{
+                          // Scale font size proportionally so text looks the
+                          // same relative to the canvas on all screen sizes.
+                          fontSize: `${toDisplay(el.fontSize, scale)}px`,
+                          color: el.color,
+                          fontFamily: el.fontFamily,
+                          textShadow: '0 1px 4px rgba(0,0,0,0.5)',
+                          wordBreak: 'break-word',
+                          lineHeight: 1.2,
+                          touchAction: 'none',
+                          pointerEvents: 'none',
+                        }}
+                      >
+                        {el.content}
+                      </div>
+                    )}
+                  </Rnd>
+                ))}
 
-                  {/* Layer 3: Transparent Mask Overlay */}
-                  {(maskImageUrl || caseImageUrl) && (
-                    <img
-                      src={maskImageUrl || caseImageUrl}
-                      alt="Case overlay mask"
-                      className="absolute inset-0 w-full h-full object-cover pointer-events-none z-30 drop-shadow-sm"
-                      style={{ mixBlendMode: maskImageUrl ? 'normal' : 'multiply' }}
-                      draggable={false}
-                    />
-                  )}
-
-                  {/* Layer 2: Editable elements */}
-                  {elements.map((el) => (
-                    <Rnd
-                      key={el.id}
-                      size={{ width: el.width, height: el.height }}
-                      position={{ x: el.x, y: el.y }}
-                      bounds="parent"
-                      lockAspectRatio={el.type === 'image'}
-                      /*
-                        enableUserSelectHack must be false — when true,
-                        react-rnd temporarily sets body user-select to none
-                        which can cause issues on iOS Safari.
-                      */
-                      enableUserSelectHack={false}
-                      /*
-                        cancel="" ensures react-rnd does NOT ignore any
-                        child elements as drag sources (default cancels
-                        inputs/textareas which can break selection).
-                      */
-                      cancel=""
-                      onPointerDown={(e: React.PointerEvent) => {
-                        e.stopPropagation();
-                        setSelectedId((prev) => (prev === el.id ? null : el.id));
-                      }}
-                      onDragStart={() => {
-                        setSelectedId(el.id);
-                      }}
-                      onDrag={(_e: unknown, d: { x: number; y: number }) => {
-                        updateElement(el.id, { x: d.x, y: d.y });
-                      }}
-                      onDragStop={(_e: unknown, d: { x: number; y: number }) => {
-                        updateElement(el.id, { x: d.x, y: d.y });
-                      }}
-                      onResize={(
-                        _e: unknown,
-                        _direction: unknown,
-                        ref: HTMLElement,
-                        _delta: unknown,
-                        position: { x: number; y: number }
-                      ) => {
-                        updateElement(el.id, {
-                          width: parseFloat(ref.style.width),
-                          height: parseFloat(ref.style.height),
-                          x: position.x,
-                          y: position.y,
-                        });
-                      }}
-                      onResizeStop={(
-                        _e: unknown,
-                        _direction: unknown,
-                        ref: HTMLElement,
-                        _delta: unknown,
-                        position: { x: number; y: number }
-                      ) => {
-                        updateElement(el.id, {
-                          width: parseFloat(ref.style.width),
-                          height: parseFloat(ref.style.height),
-                          x: position.x,
-                          y: position.y,
-                        });
-                      }}
-                      className={
-                        selectedId === el.id
-                          ? 'ring-2 ring-orange-500 ring-offset-1'
-                          : ''
-                      }
-                      enableResizing={selectedId === el.id}
-                      style={{
-                        zIndex: selectedId === el.id ? 20 : 10,
-                        // CRITICAL for mobile: let react-rnd own all pointer events
-                        touchAction: 'none',
-                        cursor: 'move',
-                      }}
-                      resizeHandleComponent={
-                        selectedId === el.id
-                          ? {
-                              bottomRight: <ResizeHandle />,
-                              bottomLeft: <ResizeHandle />,
-                              topRight: <ResizeHandle />,
-                              topLeft: <ResizeHandle />,
-                            }
-                          : {}
-                      }
-                    >
-                      {el.type === 'image' ? (
-                        <img
-                          src={el.src}
-                          alt="Custom upload"
-                          className="w-full h-full object-contain pointer-events-none select-none"
-                          draggable={false}
-                          style={{
-                            filter: `contrast(${el.contrast ?? 100}%) brightness(${el.brightness ?? 100}%) saturate(${el.saturate ?? 100}%)`,
-                            transform: el.flipX ? 'scaleX(-1)' : 'scaleX(1)',
-                            touchAction: 'none',
-                          }}
-                        />
-                      ) : (
-                        <div
-                          className="w-full h-full flex items-center justify-center select-none"
-                          style={{
-                            fontSize: `${el.fontSize}px`,
-                            color: el.color,
-                            fontFamily: el.fontFamily,
-                            textShadow: '0 1px 4px rgba(0,0,0,0.5)',
-                            wordBreak: 'break-word',
-                            lineHeight: 1.2,
-                            touchAction: 'none',
-                            pointerEvents: 'none',
-                          }}
-                        >
-                          {el.content}
-                        </div>
-                      )}
-                    </Rnd>
-                  ))}
-
-                  {/* Empty state hint */}
-                  {elements.length === 0 && (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                      <Move className="w-8 h-8 text-white/50 mb-2" />
-                      <p className="text-white/60 text-sm font-medium text-center px-8">
-                        Add images or text using the tools panel
-                      </p>
-                    </div>
-                  )}
-                </div>
+                {/* Empty state hint */}
+                {elements.length === 0 && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                    <Move className="w-8 h-8 text-white/50 mb-2" />
+                    <p className="text-white/60 text-sm font-medium text-center px-8">
+                      Add images or text using the tools panel
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
 
           {/* Bottom Floating Toolbar */}
-          {selectedId && (
-            <div className="mt-4 flex justify-center w-full">
+          {selectedId && selectedElement && (
+            <div className="mt-4 flex flex-col items-center gap-2 w-full">
+              {/* Size slider row */}
+              <div className="bg-white rounded-xl shadow-lg border border-gray-100 px-4 py-2 flex items-center gap-3 w-full max-w-xs">
+                <ZoomIn className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                <input
+                  type="range"
+                  min={10}
+                  max={100}
+                  value={Math.round(
+                    (selectedElement.width / CANVAS_WIDTH) * 100
+                  )}
+                  onChange={(e) => {
+                    const pct = Number(e.target.value) / 100;
+                    const newW = CANVAS_WIDTH * pct;
+                    if (selectedElement.type === 'image') {
+                      // keep aspect ratio
+                      const ratio = selectedElement.width / selectedElement.height;
+                      const newH = newW / ratio;
+                      updateElement(selectedElement.id, {
+                        width: newW,
+                        height: newH,
+                        x: Math.max(0, Math.min(CANVAS_WIDTH - newW, selectedElement.x)),
+                        y: Math.max(0, Math.min(CANVAS_HEIGHT - newH, selectedElement.y)),
+                      });
+                    } else {
+                      updateElement(selectedElement.id, {
+                        width: newW,
+                        x: Math.max(0, Math.min(CANVAS_WIDTH - newW, selectedElement.x)),
+                      });
+                    }
+                  }}
+                  className="flex-1 accent-orange-500 h-1.5"
+                  style={{ touchAction: 'none' }}
+                />
+                <span className="text-xs text-gray-500 w-8 text-right flex-shrink-0">
+                  {Math.round((selectedElement.width / CANVAS_WIDTH) * 100)}%
+                </span>
+              </div>
+
+              {/* Action buttons row */}
               <div className="bg-white rounded-xl shadow-lg border border-gray-100 px-6 py-3 flex gap-8 items-center justify-center z-50">
                 <ToolbarButton icon={<FlipHorizontal className="w-5 h-5" />} label="Transform" onClick={handleTransform} />
                 <ToolbarButton icon={<Maximize className="w-5 h-5" />} label="Position" onClick={handlePosition} />
