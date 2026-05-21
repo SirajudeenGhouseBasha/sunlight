@@ -30,21 +30,21 @@ export async function GET(
         mask_image_url,
         additional_images,
         created_at,
-        model:models (
+        model:models!inner (
           id,
           name,
           slug,
           model_number,
           screen_size,
           mockup_template_url,
-          brand:brands (
+          brand:brands!inner (
             id,
             name,
             slug,
             logo_url
           )
         ),
-        product_type:product_types (
+        product_type:product_types!inner (
           id,
           name,
           slug,
@@ -57,34 +57,47 @@ export async function GET(
       .single();
     
     if (error || !variant) {
+      console.error('Product fetch error:', error);
       return NextResponse.json(
         { error: 'Product not found' },
         { status: 404 }
       );
     }
-    const v = variant as any;
+    
+    // Handle both array and object responses from Supabase
+    const model = Array.isArray(variant.model) ? variant.model[0] : variant.model;
+    const brand = model && (Array.isArray(model.brand) ? model.brand[0] : model.brand);
+    const productType = Array.isArray(variant.product_type) ? variant.product_type[0] : variant.product_type;
+    
+    if (!model || !brand || !productType) {
+      console.error('Missing required relations:', { model, brand, productType });
+      return NextResponse.json(
+        { error: 'Product data incomplete' },
+        { status: 500 }
+      );
+    }
     
     // Transform to match expected format
     const product = {
-      id: v.id,
-      variant_id: v.id,
-      name: `${v.model.brand.name} ${v.model.name}`,
-      brand: v.model.brand,
-      model: v.model,
-      product_type: v.product_type,
-      color_name: v.color_name,
-      color_hex: v.color_hex,
-      price: parseFloat(v.product_type.base_price) + parseFloat(v.price_modifier),
-      base_price: parseFloat(v.product_type.base_price),
-      price_modifier: parseFloat(v.price_modifier),
-      stock_quantity: v.stock_quantity,
-      in_stock: v.stock_quantity > 0,
-      is_active: v.is_active,
-      image_url: v.image_url,
-      mask_image_url: v.mask_image_url,
-      mockup_template_url: v.model?.mockup_template_url || null,
-      additional_images: v.additional_images || [],
-      created_at: v.created_at,
+      id: variant.id,
+      variant_id: variant.id,
+      name: `${brand.name} ${model.name}`,
+      brand: brand,
+      model: model,
+      product_type: productType,
+      color_name: variant.color_name,
+      color_hex: variant.color_hex,
+      price: parseFloat(String(productType.base_price)) + parseFloat(String(variant.price_modifier)),
+      base_price: parseFloat(String(productType.base_price)),
+      price_modifier: parseFloat(String(variant.price_modifier)),
+      stock_quantity: variant.stock_quantity,
+      in_stock: variant.stock_quantity > 0,
+      is_active: variant.is_active,
+      image_url: variant.image_url,
+      mask_image_url: variant.mask_image_url,
+      mockup_template_url: model.mockup_template_url || null,
+      additional_images: variant.additional_images || [],
+      created_at: variant.created_at,
     };
     
     return NextResponse.json({ product });

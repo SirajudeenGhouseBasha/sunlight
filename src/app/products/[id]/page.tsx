@@ -1,4 +1,4 @@
-import { getCachedProduct } from '@/src/lib/cache/server-cache'
+import { createClient } from '@/src/lib/supabase/server'
 import { ProductPageProps } from './ProductDetailsPage'
 
 export const revalidate = 300 // Revalidate every 5 minutes
@@ -21,22 +21,40 @@ export async function generateStaticParams() {
 export async function generateMetadata({ params }: ProductPageProps) {
   try {
     const { id } = await params
-    const product = await getCachedProduct(id)
+    const supabase = await createClient()
     
-    if (!product) {
+    const { data: variant } = await supabase
+      .from('variants')
+      .select(`
+        id,
+        name,
+        model:models!inner (
+          name,
+          brand:brands!inner (
+            name
+          )
+        )
+      `)
+      .eq('id', id)
+      .single()
+    
+    if (!variant) {
       return {
         title: 'Product Not Found | Sunlight',
         description: 'The requested product could not be found.',
       }
     }
     
+    const model = Array.isArray(variant.model) ? variant.model[0] : variant.model
+    const brand = model && (Array.isArray(model.brand) ? model.brand[0] : model.brand)
+    const productName = brand && model ? `${brand.name} ${model.name}`.trim() : 'Phone Case'
+    
     return {
-      title: `${product.name} | Sunlight`,
-      description: product.description || `Shop ${product.name} - Premium phone case with excellent protection and style.`,
+      title: `${productName} | Sunlight`,
+      description: `Shop ${productName} - Premium phone case with excellent protection and style.`,
       openGraph: {
-        title: product.name,
-        description: product.description,
-        images: [product.image_url],
+        title: productName,
+        description: `Shop ${productName} - Premium phone case with excellent protection and style.`,
       },
     }
   } catch {

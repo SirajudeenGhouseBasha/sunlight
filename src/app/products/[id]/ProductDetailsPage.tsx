@@ -1,7 +1,7 @@
 import { Suspense } from 'react'
 import { notFound } from 'next/navigation'
 import Image from 'next/image'
-import { getCachedProduct, getCachedRelatedProducts } from '@/src/lib/cache/server-cache'
+import { createClient } from '@/src/lib/supabase/server'
 import { ProductGrid } from '@/src/components/optimized/ProductGrid'
 import { ProductGridSkeleton } from '@/src/components/loading/ProductSkeleton'
 import { ProductActions } from '@/src/components/products/ProductActions'
@@ -17,10 +17,102 @@ export interface ProductPageProps {
   }>
 }
 
+// Fetch product directly from Supabase instead of through API
+async function getProduct(id: string) {
+  try {
+    const supabase = await createClient()
+    
+    const { data: variant, error } = await supabase
+      .from('variants')
+      .select(`
+        id,
+        name,
+        color_name,
+        color_hex,
+        price_modifier,
+        stock_quantity,
+        is_active,
+        image_url,
+        mask_image_url,
+        additional_images,
+        created_at,
+        model:models!inner (
+          id,
+          name,
+          slug,
+          model_number,
+          screen_size,
+          mockup_template_url,
+          brand:brands!inner (
+            id,
+            name,
+            slug,
+            logo_url
+          )
+        ),
+        product_type:product_types!inner (
+          id,
+          name,
+          slug,
+          base_price,
+          description,
+          material_properties
+        )
+      `)
+      .eq('id', id)
+      .single()
+    
+    if (error || !variant) {
+      console.error('Product fetch error:', error)
+      return null
+    }
+    
+    // Handle both array and object responses from Supabase
+    const model = Array.isArray(variant.model) ? variant.model[0] : variant.model
+    const brand = model && (Array.isArray(model.brand) ? model.brand[0] : model.brand)
+    const productType = Array.isArray(variant.product_type) ? variant.product_type[0] : variant.product_type
+    
+    if (!model || !brand || !productType) {
+      console.error('Missing required relations:', { model, brand, productType })
+      return null
+    }
+    
+    // Type assertions after null checks
+    const brandData = brand as { id: any; name: any; slug: any; logo_url: any }
+    const modelData = model as { id: any; name: any; slug: any; model_number: any; screen_size: any; mockup_template_url: any }
+    const productTypeData = productType as { id: any; name: any; slug: any; base_price: any; description: any; material_properties: any }
+    
+    return {
+      id: variant.id,
+      variant_id: variant.id,
+      name: `${brandData.name} ${modelData.name}`,
+      brand: brandData,
+      model: modelData,
+      product_type: productTypeData,
+      color_name: variant.color_name,
+      color_hex: variant.color_hex,
+      price: parseFloat(String(productTypeData.base_price)) + parseFloat(String(variant.price_modifier)),
+      base_price: parseFloat(String(productTypeData.base_price)),
+      price_modifier: parseFloat(String(variant.price_modifier)),
+      stock_quantity: variant.stock_quantity,
+      in_stock: variant.stock_quantity > 0,
+      is_active: variant.is_active,
+      image_url: variant.image_url,
+      mask_image_url: variant.mask_image_url,
+      mockup_template_url: modelData.mockup_template_url || null,
+      additional_images: variant.additional_images || [],
+      created_at: variant.created_at,
+      description: variant.name,
+    }
+  } catch (error) {
+    console.error('Failed to fetch product:', error)
+    return null
+  }
+}
+
 async function ProductDetails({ id, isCustomizing }: { id: string; isCustomizing: boolean }) {
   try {
-    const result = await getCachedProduct(id)
-    const product = result?.product || result
+    const product = await getProduct(id)
     
     if (!product) {
       notFound()
@@ -61,10 +153,10 @@ async function ProductDetails({ id, isCustomizing }: { id: string; isCustomizing
     }
 
     // Resolve display values
-    const brandName = product.model?.brand?.name
+    const brandName = product.brand?.name
     const modelName = product.model?.name
     const productTypeName = product.product_type?.name
-    const material = product.product_type?.material || product.product_type?.name
+    const material = product.product_type?.material_properties || product.product_type?.name
     const basePrice = product.product_type?.base_price ?? 0
     const priceModifier = product.price_modifier ?? 0
     const totalPrice = product.price ?? (basePrice + priceModifier)
@@ -229,16 +321,82 @@ async function ProductDetails({ id, isCustomizing }: { id: string; isCustomizing
 
 async function RelatedProducts({ productId }: { productId: string }) {
   try {
-    const relatedProducts = await getCachedRelatedProducts(productId)
+    const supabase = await createClient()
     
-    if (!relatedProducts || relatedProducts.length === 0) {
+    // Get the current variant details
+    const { data: currentVariant } = await supabase
+      .from('variants')
+      .select('model_id, product_type_id')
+      .eq('id', productId)
+      .single()
+
+    if (!currentVariant) {
       return null
     }
+
+    // Find related products (same model or product type)
+    const { data: variants, error } = await supabase
+      .from('variants')
+      .select(`
+        id,
+        color_name,
+        color_hex,
+        price_modifier,
+        stock_quantity,
+        image_url,
+        model:models!inner (
+          id,
+          name,
+          brand:brands!inner (
+            id,
+            name
+          )
+        ),
+        product_type:product_types!inner (
+          id,
+          name,
+          base_price
+        )
+      `)
+      .neq('id', productId)
+      .eq('is_active', true)
+      .gt('stock_quantity', 0)
+      .or(`model_id.eq.${currentVariant.model_id},product_type_id.eq.${currentVariant.product_type_id}`)
+      .limit(4)
+
+    if (error || !variants || variants.length === 0) {
+      return null
+    }
+
+    // Format products
+    const products = variants.map((variant: any) => {
+      const modelRaw = Array.isArray(variant.model) ? variant.model[0] : variant.model
+      const model = modelRaw as any
+      const brandRaw = model && (Array.isArray(model.brand) ? model.brand[0] : model.brand)
+      const brand = brandRaw as any
+      const productTypeRaw = Array.isArray(variant.product_type) ? variant.product_type[0] : variant.product_type
+      const productType = productTypeRaw as any
+      
+      return {
+        id: variant.id,
+        variant_id: variant.id,
+        name: `${brand?.name || 'Unknown'} ${model?.name || 'Unknown'}`,
+        brand: brand?.name || 'Unknown',
+        model: model?.name || 'Unknown',
+        product_type: productType?.name || 'Unknown',
+        category: 'phone-case',
+        color_name: variant.color_name,
+        color_hex: variant.color_hex,
+        price: (productType?.base_price || 0) + (variant.price_modifier || 0),
+        in_stock: variant.stock_quantity > 0,
+        image_url: variant.image_url,
+      }
+    })
     
     return (
       <div className="mt-16">
         <h2 className="text-2xl font-bold text-gray-900 mb-6">Related Products</h2>
-        <ProductGrid products={relatedProducts} />
+        <ProductGrid products={products} />
       </div>
     )
   } catch (error) {
