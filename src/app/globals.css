@@ -356,6 +356,21 @@
         text-wrap: pretty;
     }
     
+    /* Touch interaction utilities for mobile design editor */
+    .touch-none {
+        touch-action: none;
+        -webkit-user-select: none;
+        user-select: none;
+    }
+    
+    /* Improve touch target sizes on mobile */
+    @media (max-width: 768px) {
+        .touch-target {
+            min-width: 44px;
+            min-height: 44px;
+        }
+    }
+    
     /* Animation utilities */
     .animate-fade-in {
         animation: fadeIn var(--duration-normal) var(--ease-out);
