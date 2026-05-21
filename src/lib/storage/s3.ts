@@ -8,31 +8,42 @@
 import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
-// Validate environment variables
-if (!process.env.AWS_REGION) {
-  throw new Error('Missing AWS_REGION environment variable');
-}
-if (!process.env.AWS_ACCESS_KEY_ID) {
-  throw new Error('Missing AWS_ACCESS_KEY_ID environment variable');
-}
-if (!process.env.AWS_SECRET_ACCESS_KEY) {
-  throw new Error('Missing AWS_SECRET_ACCESS_KEY environment variable');
-}
-if (!process.env.AWS_S3_BUCKET_NAME) {
-  throw new Error('Missing AWS_S3_BUCKET_NAME environment variable');
-}
-
-// Initialize S3 client
-const s3Client = new S3Client({
-  region: process.env.AWS_REGION,
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-  },
-});
-
+// Validate environment variables - only throw if S3 operations are actually used
+const AWS_REGION = process.env.AWS_REGION;
+const AWS_ACCESS_KEY_ID = process.env.AWS_ACCESS_KEY_ID;
+const AWS_SECRET_ACCESS_KEY = process.env.AWS_SECRET_ACCESS_KEY;
 const BUCKET_NAME = process.env.AWS_S3_BUCKET_NAME;
-const BUCKET_URL = process.env.NEXT_PUBLIC_S3_BUCKET_URL || `https://${BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com`;
+const BUCKET_URL = process.env.NEXT_PUBLIC_S3_BUCKET_URL || (BUCKET_NAME && AWS_REGION ? `https://${BUCKET_NAME}.s3.${AWS_REGION}.amazonaws.com` : '');
+
+// Initialize S3 client lazily
+let s3Client: S3Client | null = null;
+
+function getS3Client(): S3Client {
+  if (!AWS_REGION) {
+    throw new Error('Missing AWS_REGION environment variable');
+  }
+  if (!AWS_ACCESS_KEY_ID) {
+    throw new Error('Missing AWS_ACCESS_KEY_ID environment variable');
+  }
+  if (!AWS_SECRET_ACCESS_KEY) {
+    throw new Error('Missing AWS_SECRET_ACCESS_KEY environment variable');
+  }
+  if (!BUCKET_NAME) {
+    throw new Error('Missing AWS_S3_BUCKET_NAME environment variable');
+  }
+
+  if (!s3Client) {
+    s3Client = new S3Client({
+      region: AWS_REGION,
+      credentials: {
+        accessKeyId: AWS_ACCESS_KEY_ID,
+        secretAccessKey: AWS_SECRET_ACCESS_KEY,
+      },
+    });
+  }
+  
+  return s3Client;
+}
 
 // Allowed file types
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
@@ -83,17 +94,18 @@ export async function uploadToS3(
   folder?: string
 ): Promise<{ url: string; key: string }> {
   try {
+    const client = getS3Client();
     const key = folder ? `${folder}/${fileName}` : fileName;
     
     const command = new PutObjectCommand({
-      Bucket: BUCKET_NAME,
+      Bucket: BUCKET_NAME!,
       Key: key,
       Body: file,
       ContentType: mimeType,
       // Removed ACL - bucket uses bucket policy for public access
     });
     
-    await s3Client.send(command);
+    await client.send(command);
     
     const url = `${BUCKET_URL}/${key}`;
     
@@ -109,12 +121,13 @@ export async function uploadToS3(
  */
 export async function deleteFromS3(key: string): Promise<void> {
   try {
+    const client = getS3Client();
     const command = new DeleteObjectCommand({
-      Bucket: BUCKET_NAME,
+      Bucket: BUCKET_NAME!,
       Key: key,
     });
     
-    await s3Client.send(command);
+    await client.send(command);
   } catch (error) {
     console.error('S3 delete error:', error);
     throw new Error('Failed to delete file from S3');
@@ -126,12 +139,13 @@ export async function deleteFromS3(key: string): Promise<void> {
  */
 export async function getSignedS3Url(key: string, expiresIn: number = 3600): Promise<string> {
   try {
+    const client = getS3Client();
     const command = new GetObjectCommand({
-      Bucket: BUCKET_NAME,
+      Bucket: BUCKET_NAME!,
       Key: key,
     });
     
-    const url = await getSignedUrl(s3Client, command, { expiresIn });
+    const url = await getSignedUrl(client, command, { expiresIn });
     return url;
   } catch (error) {
     console.error('S3 signed URL error:', error);

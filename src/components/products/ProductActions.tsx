@@ -6,9 +6,11 @@ import { Button } from '@/src/components/ui/button';
 
 interface ProductActionsProps {
   variantId: string;
+  designId?: string;
+  isPredesigned?: boolean;
 }
 
-export function ProductActions({ variantId }: ProductActionsProps) {
+export function ProductActions({ variantId, designId, isPredesigned = false }: ProductActionsProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -17,11 +19,24 @@ export function ProductActions({ variantId }: ProductActionsProps) {
     setLoading(true);
     setError(null);
     try {
+      const body: any = { variant_id: variantId, quantity: 1 };
+      
+      // For predesigned products, add the predesigned_product_id
+      if (isPredesigned) {
+        body.predesigned_product_id = variantId;
+      }
+      
+      // Add design_id if provided
+      if (designId) {
+        body.design_id = designId;
+      }
+      
       const res = await fetch('/api/cart', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ variant_id: variantId, quantity: 1 }),
+        body: JSON.stringify(body),
       });
+      
       if (res.status === 401) {
         router.push('/auth/login');
         return;
@@ -39,11 +54,24 @@ export function ProductActions({ variantId }: ProductActionsProps) {
     setLoading(true);
     setError(null);
     try {
+      const body: any = { variant_id: variantId, quantity: 1 };
+      
+      // For predesigned products, add the predesigned_product_id
+      if (isPredesigned) {
+        body.predesigned_product_id = variantId;
+      }
+      
+      // Add design_id if provided
+      if (designId) {
+        body.design_id = designId;
+      }
+      
       const res = await fetch('/api/cart', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ variant_id: variantId, quantity: 1 }),
+        body: JSON.stringify(body),
       });
+      
       if (res.status === 401) {
         router.push('/auth/login');
         return;
@@ -77,15 +105,17 @@ export function ProductActions({ variantId }: ProductActionsProps) {
       >
         {loading ? 'Processing...' : 'Buy Now'}
       </Button>
-      <a href={`/products/${variantId}?customize=true`}>
-        <Button
-          variant="outline"
-          size="lg"
-          className="w-full mt-2 border-orange-300 text-orange-600 hover:bg-orange-50 font-semibold"
-        >
-          🎨 Customize This Case
-        </Button>
-      </a>
+      {!isPredesigned && (
+        <a href={`/products/${variantId}?customize=true`}>
+          <Button
+            variant="outline"
+            size="lg"
+            className="w-full mt-2 border-orange-300 text-orange-600 hover:bg-orange-50 font-semibold"
+          >
+            🎨 Customize This Case
+          </Button>
+        </a>
+      )}
     </div>
   );
 }

@@ -31,10 +31,16 @@ async function getApiBaseUrl() {
     // no request context (e.g. background cache warmers)
   }
 
+  // Use VERCEL_URL in production if available
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`
+  }
+
+  if (process.env.NEXT_PUBLIC_SITE_URL) {
+    return process.env.NEXT_PUBLIC_SITE_URL
+  }
+
   if (process.env.NEXT_PUBLIC_API_URL) {
-    if (process.env.NEXT_PUBLIC_API_URL.includes('localhost')) {
-      return 'http://localhost:3000'
-    }
     return process.env.NEXT_PUBLIC_API_URL
   }
 

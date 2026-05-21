@@ -1,4 +1,5 @@
 import { Suspense } from 'react'
+import Link from 'next/link'
 import { createClient } from '@/src/lib/supabase/server'
 import { PredesignedGrid } from '@/src/components/predesigned/PredesignedGrid'
 import { PredesignedGridSkeleton } from '@/src/components/loading/PredesignedSkeleton'
@@ -23,36 +24,25 @@ async function getPredesignedProducts(featured?: string, brand?: string, categor
       description,
       price_override,
       is_featured,
-      final_price:price_override,
-      variant:variants (
+      brand_id,
+      model_id,
+      product_type_id,
+      color_name,
+      color_hex,
+      design_image_url,
+      variant_image_url,
+      brand:brands (
         id,
-        color_name,
-        color_hex,
-        price_modifier,
-        stock_quantity,
-        image_url,
-        product_type:product_types (
-          id,
-          name,
-          base_price
-        ),
-        model:models (
-          id,
-          name,
-          brand:brands (
-            id,
-            name
-          )
-        )
+        name
       ),
-      design:designs (
+      model:models (
+        id,
+        name
+      ),
+      product_type:product_types (
         id,
         name,
-        description,
-        image_url,
-        thumbnail_url,
-        category,
-        tags
+        base_price
       )
     `)
     .eq('is_active', true)
@@ -72,28 +62,26 @@ async function getPredesignedProducts(featured?: string, brand?: string, categor
 
   // Calculate final prices and format data
   return (data || []).map((item: any) => {
-    const basePrice = item.variant?.product_type?.base_price || 0
-    const priceModifier = item.variant?.price_modifier || 0
-    const variantPrice = basePrice + priceModifier
-    const finalPrice = item.price_override || variantPrice
+    const basePrice = item.product_type?.base_price || 0
+    const finalPrice = item.price_override || basePrice
 
     return {
       id: item.id,
       name: item.name,
       description: item.description,
       price: finalPrice,
-      image_url: item.design?.image_url || item.design?.thumbnail_url || item.variant?.image_url || 'https://via.placeholder.com/600x600?text=Phone+Case',
-      brand: item.variant?.model?.brand?.name || 'Unknown',
-      model: item.variant?.model?.name || 'Unknown',
-      color: item.variant?.color_name || 'Default',
-      color_hex: item.variant?.color_hex,
-      category: item.design?.category || 'general',
-      tags: item.design?.tags || [],
+      image_url: item.design_image_url || item.variant_image_url || 'https://via.placeholder.com/600x600?text=Phone+Case',
+      brand: item.brand?.name || 'Unknown',
+      model: item.model?.name || 'Unknown',
+      color: item.color_name || 'Default',
+      color_hex: item.color_hex,
+      category: 'predesigned',
+      tags: [],
       is_featured: item.is_featured,
-      variant_id: item.variant?.id,
-      design_id: item.design?.id,
-      stock_quantity: item.variant?.stock_quantity || 0,
-      in_stock: (item.variant?.stock_quantity || 0) > 0,
+      variant_id: item.id, // Use predesigned product ID as variant_id for navigation
+      design_id: item.id, // Use predesigned product ID as design_id for navigation
+      stock_quantity: 100, // Predesigned products are always in stock
+      in_stock: true,
     }
   })
 }
@@ -147,7 +135,7 @@ async function FilterSection({ selectedBrand, selectedCategory, isFeatured }: {
       <div>
         <h3 className="text-lg font-semibold mb-3">Collections</h3>
         <div className="flex flex-wrap gap-2">
-          <a
+          <Link
             href="/predesigned"
             className={`px-4 py-2 rounded-full text-sm transition-colors ${
               !isFeatured
@@ -156,8 +144,8 @@ async function FilterSection({ selectedBrand, selectedCategory, isFeatured }: {
             }`}
           >
             All Designs
-          </a>
-          <a
+          </Link>
+          <Link
             href="/predesigned?featured=true"
             className={`px-4 py-2 rounded-full text-sm transition-colors ${
               isFeatured
@@ -166,7 +154,7 @@ async function FilterSection({ selectedBrand, selectedCategory, isFeatured }: {
             }`}
           >
             Featured
-          </a>
+          </Link>
         </div>
       </div>
 
@@ -174,7 +162,7 @@ async function FilterSection({ selectedBrand, selectedCategory, isFeatured }: {
       <div>
         <h3 className="text-lg font-semibold mb-3">Brands</h3>
         <div className="flex flex-wrap gap-2">
-          <a
+          <Link
             href="/predesigned"
             className={`px-4 py-2 rounded-full text-sm transition-colors ${
               !selectedBrand
@@ -183,9 +171,9 @@ async function FilterSection({ selectedBrand, selectedCategory, isFeatured }: {
             }`}
           >
             All Brands
-          </a>
+          </Link>
           {brands.map((brand: { id: string; slug: string; name: string }) => (
-            <a
+            <Link
               key={brand.id}
               href={`/predesigned?brand=${brand.slug}`}
               className={`px-4 py-2 rounded-full text-sm transition-colors ${
@@ -195,7 +183,7 @@ async function FilterSection({ selectedBrand, selectedCategory, isFeatured }: {
               }`}
             >
               {brand.name}
-            </a>
+            </Link>
           ))}
         </div>
       </div>
@@ -204,7 +192,7 @@ async function FilterSection({ selectedBrand, selectedCategory, isFeatured }: {
       <div>
         <h3 className="text-lg font-semibold mb-3">Categories</h3>
         <div className="flex flex-wrap gap-2">
-          <a
+          <Link
             href="/predesigned"
             className={`px-4 py-2 rounded-full text-sm transition-colors ${
               !selectedCategory
@@ -213,9 +201,9 @@ async function FilterSection({ selectedBrand, selectedCategory, isFeatured }: {
             }`}
           >
             All Categories
-          </a>
+          </Link>
           {categories.map((category) => (
-            <a
+            <Link
               key={category}
               href={`/predesigned?category=${category}`}
               className={`px-4 py-2 rounded-full text-sm transition-colors ${
@@ -225,7 +213,7 @@ async function FilterSection({ selectedBrand, selectedCategory, isFeatured }: {
               }`}
             >
               {category.charAt(0).toUpperCase() + category.slice(1)}
-            </a>
+            </Link>
           ))}
         </div>
       </div>
