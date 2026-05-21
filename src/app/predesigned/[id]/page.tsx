@@ -1,5 +1,6 @@
 import { Suspense } from 'react'
 import { notFound } from 'next/navigation'
+import Link from 'next/link'
 import Image from 'next/image'
 import { createClient } from '@/src/lib/supabase/server'
 import { ProductActions } from '@/src/components/products/ProductActions'
@@ -227,9 +228,9 @@ export default async function PredesignedProductPage({ params }: PredesignedProd
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-6">
-        <a href="/predesigned" className="text-orange-600 hover:text-orange-700 text-sm font-medium">
+        <Link href="/predesigned" className="text-orange-600 hover:text-orange-700 text-sm font-medium">
           ← Back to Predesigned Cases
-        </a>
+        </Link>
       </div>
       
       <Suspense fallback={

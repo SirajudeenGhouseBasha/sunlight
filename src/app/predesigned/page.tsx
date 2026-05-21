@@ -1,4 +1,5 @@
 import { Suspense } from 'react'
+import Link from 'next/link'
 import { createClient } from '@/src/lib/supabase/server'
 import { PredesignedGrid } from '@/src/components/predesigned/PredesignedGrid'
 import { PredesignedGridSkeleton } from '@/src/components/loading/PredesignedSkeleton'
@@ -134,7 +135,7 @@ async function FilterSection({ selectedBrand, selectedCategory, isFeatured }: {
       <div>
         <h3 className="text-lg font-semibold mb-3">Collections</h3>
         <div className="flex flex-wrap gap-2">
-          <a
+          <Link
             href="/predesigned"
             className={`px-4 py-2 rounded-full text-sm transition-colors ${
               !isFeatured
@@ -143,8 +144,8 @@ async function FilterSection({ selectedBrand, selectedCategory, isFeatured }: {
             }`}
           >
             All Designs
-          </a>
-          <a
+          </Link>
+          <Link
             href="/predesigned?featured=true"
             className={`px-4 py-2 rounded-full text-sm transition-colors ${
               isFeatured
@@ -153,7 +154,7 @@ async function FilterSection({ selectedBrand, selectedCategory, isFeatured }: {
             }`}
           >
             Featured
-          </a>
+          </Link>
         </div>
       </div>
 
@@ -161,7 +162,7 @@ async function FilterSection({ selectedBrand, selectedCategory, isFeatured }: {
       <div>
         <h3 className="text-lg font-semibold mb-3">Brands</h3>
         <div className="flex flex-wrap gap-2">
-          <a
+          <Link
             href="/predesigned"
             className={`px-4 py-2 rounded-full text-sm transition-colors ${
               !selectedBrand
@@ -170,9 +171,9 @@ async function FilterSection({ selectedBrand, selectedCategory, isFeatured }: {
             }`}
           >
             All Brands
-          </a>
+          </Link>
           {brands.map((brand: { id: string; slug: string; name: string }) => (
-            <a
+            <Link
               key={brand.id}
               href={`/predesigned?brand=${brand.slug}`}
               className={`px-4 py-2 rounded-full text-sm transition-colors ${
@@ -182,7 +183,7 @@ async function FilterSection({ selectedBrand, selectedCategory, isFeatured }: {
               }`}
             >
               {brand.name}
-            </a>
+            </Link>
           ))}
         </div>
       </div>
@@ -191,7 +192,7 @@ async function FilterSection({ selectedBrand, selectedCategory, isFeatured }: {
       <div>
         <h3 className="text-lg font-semibold mb-3">Categories</h3>
         <div className="flex flex-wrap gap-2">
-          <a
+          <Link
             href="/predesigned"
             className={`px-4 py-2 rounded-full text-sm transition-colors ${
               !selectedCategory
@@ -200,9 +201,9 @@ async function FilterSection({ selectedBrand, selectedCategory, isFeatured }: {
             }`}
           >
             All Categories
-          </a>
+          </Link>
           {categories.map((category) => (
-            <a
+            <Link
               key={category}
               href={`/predesigned?category=${category}`}
               className={`px-4 py-2 rounded-full text-sm transition-colors ${
@@ -212,7 +213,7 @@ async function FilterSection({ selectedBrand, selectedCategory, isFeatured }: {
               }`}
             >
               {category.charAt(0).toUpperCase() + category.slice(1)}
-            </a>
+            </Link>
           ))}
         </div>
       </div>
