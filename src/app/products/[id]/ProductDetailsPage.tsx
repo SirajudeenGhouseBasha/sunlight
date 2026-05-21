@@ -19,8 +19,10 @@ export interface ProductPageProps {
 
 // Fetch product directly from Supabase instead of through API
 async function getProduct(id: string) {
+  console.log('[getProduct] Starting fetch for product ID:', id)
   try {
     const supabase = await createClient()
+    console.log('[getProduct] Supabase client created successfully')
     
     const { data: variant, error } = await supabase
       .from('variants')
@@ -62,18 +64,42 @@ async function getProduct(id: string) {
       .eq('id', id)
       .single()
     
-    if (error || !variant) {
-      console.error('Product fetch error:', error)
+    if (error) {
+      console.error('[getProduct] Supabase query error:', error)
       return null
     }
+    
+    if (!variant) {
+      console.error('[getProduct] No variant found for ID:', id)
+      return null
+    }
+    
+    console.log('[getProduct] Variant fetched successfully:', { 
+      id: variant.id, 
+      name: variant.name,
+      hasModel: !!variant.model,
+      hasProductType: !!variant.product_type
+    })
     
     // Handle both array and object responses from Supabase
     const model = Array.isArray(variant.model) ? variant.model[0] : variant.model
     const brand = model && (Array.isArray(model.brand) ? model.brand[0] : model.brand)
     const productType = Array.isArray(variant.product_type) ? variant.product_type[0] : variant.product_type
     
+    console.log('[getProduct] Extracted relations:', {
+      hasModel: !!model,
+      hasBrand: !!brand,
+      hasProductType: !!productType,
+      brandName: brand?.name,
+      modelName: model?.name
+    })
+    
     if (!model || !brand || !productType) {
-      console.error('Missing required relations:', { model, brand, productType })
+      console.error('[getProduct] Missing required relations:', { 
+        model: !!model, 
+        brand: !!brand, 
+        productType: !!productType 
+      })
       return null
     }
     
@@ -82,7 +108,7 @@ async function getProduct(id: string) {
     const modelData = model as { id: any; name: any; slug: any; model_number: any; screen_size: any; mockup_template_url: any }
     const productTypeData = productType as { id: any; name: any; slug: any; base_price: any; description: any; material_properties: any }
     
-    return {
+    const product = {
       id: variant.id,
       variant_id: variant.id,
       name: `${brandData.name} ${modelData.name}`,
@@ -104,19 +130,32 @@ async function getProduct(id: string) {
       created_at: variant.created_at,
       description: variant.name,
     }
+    
+    console.log('[getProduct] Product constructed successfully:', {
+      id: product.id,
+      name: product.name,
+      price: product.price
+    })
+    
+    return product
   } catch (error) {
-    console.error('Failed to fetch product:', error)
+    console.error('[getProduct] Unexpected error:', error)
+    console.error('[getProduct] Error stack:', error instanceof Error ? error.stack : 'No stack trace')
     return null
   }
 }
 
 async function ProductDetails({ id, isCustomizing }: { id: string; isCustomizing: boolean }) {
+  console.log('[ProductDetails] Starting with ID:', id, 'isCustomizing:', isCustomizing)
   try {
     const product = await getProduct(id)
     
     if (!product) {
+      console.error('[ProductDetails] Product not found for ID:', id)
       notFound()
     }
+    
+    console.log('[ProductDetails] Product loaded successfully:', product.name)
     
     if (isCustomizing) {
       return (
@@ -314,7 +353,11 @@ async function ProductDetails({ id, isCustomizing }: { id: string; isCustomizing
       </div>
     )
   } catch (error) {
-    console.error('Failed to load product:', error)
+    console.error('[ProductDetails] Failed to load product:', error)
+    console.error('[ProductDetails] Error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : 'No stack trace'
+    })
     notFound()
   }
 }
@@ -406,9 +449,13 @@ async function RelatedProducts({ productId }: { productId: string }) {
 }
 
 export default async function ProductPage({ params, searchParams }: ProductPageProps) {
+  console.log('[ProductPage] Starting page render')
   const { id } = await params
+  console.log('[ProductPage] Product ID:', id)
+  
   const resolvedSearchParams = searchParams ? await searchParams : {}
   const isCustomizing = resolvedSearchParams.customize === 'true'
+  console.log('[ProductPage] Search params:', { isCustomizing, params: resolvedSearchParams })
   
   return (
     <div className="container mx-auto px-4 py-8">
