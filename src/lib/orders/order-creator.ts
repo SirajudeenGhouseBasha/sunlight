@@ -149,7 +149,7 @@ export class OrderCreator {
     const decrementedVariants: Array<{ variant_id: string; quantity: number }> = [];
 
     const variantIds = items.map((i) => i.variant_id).filter(Boolean);
-    let variantNamesMap: Record<string, { product_name: string; variant_name: string }> = {};
+    const variantNamesMap: Record<string, { product_name: string; variant_name: string }> = {};
 
     if (variantIds.length > 0) {
       const { data: variants } = await this.supabase

@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
     }
 
     const userIds = [...new Set((orders ?? []).map((o: any) => o.user_id).filter(Boolean))];
-    let userMap: Record<string, { full_name: string | null; email: string | null; phone: string | null }> = {};
+    const userMap: Record<string, { full_name: string | null; email: string | null; phone: string | null }> = {};
 
     if (userIds.length > 0) {
       const { data: userRows } = await supabase
