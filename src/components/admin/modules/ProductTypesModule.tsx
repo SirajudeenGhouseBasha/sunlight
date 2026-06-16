@@ -213,7 +213,7 @@ export function ProductTypesModule() {
         key: 'base_price',
         label: 'Base Price',
         align: 'right',
-        render: (value: number) => `$${value.toFixed(2)}`,
+        render: (value: number) => `₹${value.toFixed(2)}`,
       },
       {
         key: 'is_active',

@@ -272,7 +272,7 @@ export function ProductionOrderDetailModal({ orderId, onClose }: Props) {
                 <Section title="Order">
                   <Row label="Order #" value={order.order.order_number} />
                   <Row label="Status" value={order.order.status} />
-                  <Row label="Total" value={`$${Number(order.order.total_amount).toFixed(2)}`} />
+                  <Row label="Total" value={`₹${Number(order.order.total_amount).toFixed(2)}`} />
                   <Row label="Placed" value={formatDate(order.order.created_at)} />
                 </Section>
               )}
@@ -284,7 +284,7 @@ export function ProductionOrderDetailModal({ orderId, onClose }: Props) {
                   <Row label="Variant" value={order.order_item.variant_name} />
                   {order.order_item.design_name && <Row label="Design" value={order.order_item.design_name} />}
                   <Row label="Qty" value={String(order.order_item.quantity)} />
-                  <Row label="Unit Price" value={`$${Number(order.order_item.unit_price).toFixed(2)}`} />
+                  <Row label="Unit Price" value={`₹${Number(order.order_item.unit_price).toFixed(2)}`} />
                 </Section>
               )}
 

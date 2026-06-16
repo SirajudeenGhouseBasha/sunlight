@@ -511,3 +511,21 @@
         widows: 3;
     }
 }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   SCROLLBAR UTILITIES
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}
+
+/* Touch scrolling */
+.-webkit-overflow-scrolling\\:touch {
+    -webkit-overflow-scrolling: touch;
+}

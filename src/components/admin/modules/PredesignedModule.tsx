@@ -341,7 +341,7 @@ export function PredesignedModule() {
         align: 'right',
         render: (value: number | undefined) => (
           <span className="text-sm text-gray-700">
-            {value ? `$${value.toFixed(2)}` : <span className="text-gray-400 italic">Variant price</span>}
+            {value ? `₹${value.toFixed(2)}` : <span className="text-gray-400 italic">Variant price</span>}
           </span>
         ),
       },

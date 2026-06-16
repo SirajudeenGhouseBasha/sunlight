@@ -14,29 +14,41 @@ import { cn } from '@/src/lib/utils';
 
 const navigation = [
   {
-    label: 'Section 1 — Catalogue',
+    label: 'Section 1 — Orders',
+    items: [
+      { name: 'Orders', key: 'orders', icon: '📋' },
+    ],
+  },
+  {
+    label: 'Section 2 — Catalogue',
     items: [
       { name: 'Brands',         key: 'brands',         icon: '🏷️' },
       { name: 'Models',         key: 'models',         icon: '📱' },
     ],
   },
    {
-    label: 'Section 2 — Product Type',
+    label: 'Section 3 — Product Type',
     items: [
       { name: 'Product Types',  key: 'product-types',  icon: '📦' },
     ],
   },
   {
-    label: 'Section 3 — Cases',
+    label: 'Section 4 — Cases',
     items: [
       { name: 'Custom Designed Case',  key: 'custom-case',      icon: '🎨' },
       { name: 'Predesigned Case',      key: 'predesigned-case', icon: '✨' },
     ],
   },
   {
-    label: 'Section 4 — Users',
+    label: 'Section 5 — Users',
     items: [
       { name: 'Users', key: 'users', icon: '👥' },
+    ],
+  },
+  {
+    label: 'Section 6 — Settings',
+    items: [
+      { name: 'Payment', key: 'payment-settings', icon: '💳' },
     ],
   },
 ];

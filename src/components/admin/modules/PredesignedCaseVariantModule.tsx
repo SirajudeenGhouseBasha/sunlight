@@ -367,7 +367,7 @@ export function PredesignedCaseVariantModule() {
         align: 'right' as const,
         render: (value: number, row: PredesignedCaseVariant) => (
           <span className="text-sm text-gray-700">
-            {value != null ? `$${value.toFixed(2)}` : row.final_price != null ? `$${row.final_price.toFixed(2)}` : 'Base price'}
+            {value != null ? `₹${value.toFixed(2)}` : row.final_price != null ? `₹${row.final_price.toFixed(2)}` : 'Base price'}
           </span>
         ),
       },

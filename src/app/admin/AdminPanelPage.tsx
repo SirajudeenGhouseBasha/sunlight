@@ -17,9 +17,16 @@ import { ProductTypesModule } from '@/src/components/admin/modules/ProductTypesM
 import { UsersModule } from '@/src/components/admin/modules/UsersModule';
 import { CustomCaseVariantModule } from '@/src/components/admin/modules/CustomCaseVariantModule';
 import { PredesignedCaseVariantModule } from '@/src/components/admin/modules/PredesignedCaseVariantModule';
+import { OrdersModule } from '@/src/components/admin/modules/OrdersModule';
+import { PaymentSettingsModule } from '@/src/components/admin/modules/PaymentSettingsModule';
 import { ToastProvider } from '@/src/components/admin/shared/Toast';
 
 const modules = {
+  orders: {
+    name: 'Orders',
+    description: 'View and manage customer orders, verify UPI payments',
+    component: OrdersModule,
+  },
   brands: {
     name: 'Brands',
     description: 'Manage smartphone brands',
@@ -49,6 +56,11 @@ const modules = {
     name: 'Users',
     description: 'Manage user accounts',
     component: UsersModule,
+  },
+  'payment-settings': {
+    name: 'Payment Settings',
+    description: 'Configure UPI payment details (UPI ID, phone, QR code)',
+    component: PaymentSettingsModule,
   },
 } as const;
 

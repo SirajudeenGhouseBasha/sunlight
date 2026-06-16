@@ -14,7 +14,6 @@ import {
   calculatePredesignedPrice,
   calculateCustomPrice,
 } from '@/src/lib/pricing/price-calculator';
-import { validateProductType } from '@/src/utils/product-type-discriminator';
 
 // =============================================
 // GET /api/cart
@@ -94,21 +93,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Valid quantity is required' }, { status: 400 });
     }
 
-    // Validate product type consistency
-    const typeValidation = validateProductType({ design_id, custom_design_data });
-    if (!typeValidation.is_valid) {
+    const hasDesign = design_id != null && design_id !== '';
+    const hasCustomData = custom_design_data != null;
+
+    if (hasDesign && hasCustomData) {
       return NextResponse.json(
-        { error: typeValidation.errors.join(' ') },
+        { error: 'Item cannot have both design_id and custom_design_data' },
         { status: 400 }
       );
     }
 
-    const isPredesigned = design_id != null;
-
     let unitPrice: number;
 
-    if (isPredesigned) {
-      // ── Predesigned: needs variant_id ──────────────────────────────
+    // ── Case 1: Predesigned — variant + design ───────────────────────────
+    if (hasDesign) {
       if (!variant_id) {
         return NextResponse.json(
           { error: 'variant_id is required for predesigned products' },
@@ -126,7 +124,6 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Invalid variant_id' }, { status: 400 });
       }
 
-      // Check if there's a price_override from predesigned_products
       const priceOverride = variant.predesigned_products?.[0]?.price_override ?? null;
 
       unitPrice = calculatePredesignedPrice({
@@ -135,7 +132,6 @@ export async function POST(request: NextRequest) {
         price_override: priceOverride != null ? parseFloat(priceOverride) : null,
       });
 
-      // Check for existing item
       const { data: existing } = await supabase
         .from('cart_items')
         .select('id, quantity')
@@ -177,12 +173,13 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Failed to add item to cart' }, { status: 500 });
       }
       return NextResponse.json({ cart_item: cartItem }, { status: 201 });
+    }
 
-    } else {
-      // ── Custom: needs model_id + product_type_id + custom_design_data ──
-      if (!model_id || !product_type_id || !custom_design_data) {
+    // ── Case 2: Custom — model + product type + custom design data ────────
+    if (hasCustomData) {
+      if (!model_id || !product_type_id) {
         return NextResponse.json(
-          { error: 'model_id, product_type_id, and custom_design_data are required for custom products' },
+          { error: 'model_id and product_type_id are required for custom products' },
           { status: 400 }
         );
       }
@@ -199,7 +196,7 @@ export async function POST(request: NextRequest) {
 
       unitPrice = calculateCustomPrice({
         base_price: parseFloat(productType.base_price),
-        price_modifier: 0, // no variant modifier for custom products
+        price_modifier: 0,
       });
 
       const { data: cartItem, error: insertError } = await supabase
@@ -224,6 +221,73 @@ export async function POST(request: NextRequest) {
       }
       return NextResponse.json({ cart_item: cartItem }, { status: 201 });
     }
+
+    // ── Case 3: Plain variant — no design, no custom data ─────────────────
+    if (!variant_id) {
+      return NextResponse.json(
+        { error: 'variant_id is required' },
+        { status: 400 }
+      );
+    }
+
+    const { data: variant, error: variantError } = await supabase
+      .from('variants')
+      .select('*, product_type:product_types(base_price)')
+      .eq('id', variant_id)
+      .single();
+
+    if (variantError || !variant) {
+      return NextResponse.json({ error: 'Invalid variant_id' }, { status: 400 });
+    }
+
+    unitPrice = calculatePredesignedPrice({
+      base_price: parseFloat(variant.product_type.base_price),
+      price_modifier: parseFloat(variant.price_modifier),
+      price_override: null,
+    });
+
+    const { data: existing } = await supabase
+      .from('cart_items')
+      .select('id, quantity')
+      .eq('user_id', user.id)
+      .eq('variant_id', variant_id)
+      .is('design_id', null)
+      .maybeSingle();
+
+    if (existing) {
+      const newQty = existing.quantity + quantity;
+      const { data: updated, error: updateError } = await supabase
+        .from('cart_items')
+        .update({ quantity: newQty, total_price: unitPrice * newQty, updated_at: new Date().toISOString() })
+        .eq('id', existing.id)
+        .select('*, variant:variants(*, model:models(id,name,slug,brand:brands(id,name,slug)), product_type:product_types(id,name,slug,base_price))')
+        .single();
+
+      if (updateError) {
+        return NextResponse.json({ error: 'Failed to update cart item' }, { status: 500 });
+      }
+      return NextResponse.json({ cart_item: updated });
+    }
+
+    const { data: cartItem, error: insertError } = await supabase
+      .from('cart_items')
+      .insert({
+        user_id: user.id,
+        variant_id,
+        design_id: null,
+        quantity,
+        unit_price: unitPrice,
+        total_price: unitPrice * quantity,
+        customization_options: customization_options ?? null,
+      })
+      .select('*, variant:variants(*, model:models(id,name,slug,brand:brands(id,name,slug)), product_type:product_types(id,name,slug,base_price))')
+      .single();
+
+    if (insertError) {
+      console.error('[Cart] Failed to insert plain variant:', insertError);
+      return NextResponse.json({ error: 'Failed to add item to cart' }, { status: 500 });
+    }
+    return NextResponse.json({ cart_item: cartItem }, { status: 201 });
   } catch {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }

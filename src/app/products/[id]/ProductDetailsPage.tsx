@@ -212,7 +212,7 @@ async function ProductDetails({ id, isCustomizing }: { id: string; isCustomizing
     const brandName = product.brand?.name
     const modelName = product.model?.name
     const productTypeName = product.product_type?.name
-    const material = product.product_type?.material_properties || product.product_type?.name
+    const material = product.product_type?.name
     const basePrice = product.product_type?.base_price ?? 0
     const priceModifier = product.price_modifier ?? 0
     const totalPrice = product.price ?? (basePrice + priceModifier)

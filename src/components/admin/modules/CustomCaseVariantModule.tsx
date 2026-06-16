@@ -319,7 +319,7 @@ export function CustomCaseVariantModule() {
         align: 'right',
         render: (value: number) => (
           <span className="text-sm text-gray-700">
-            {value ? `+$${value.toFixed(2)}` : '$0.00'}
+            {value ? `+₹${value.toFixed(2)}` : '₹0.00'}
           </span>
         ),
       },

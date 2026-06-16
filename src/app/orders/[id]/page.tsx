@@ -31,13 +31,19 @@ interface Order {
   id: string;
   order_number: string;
   status: string;
-  payment_status: string;
   subtotal: number;
   total_amount: number;
   shipping_address: any;
   billing_address: any;
   tracking_number?: string;
   notes?: string;
+  payment_method?: string;
+  upi_transaction_id?: string;
+  payment_screenshot_url?: string;
+  customer_name?: string;
+  customer_phone?: string;
+  customer_email?: string;
+  verified_at?: string;
   created_at: string;
   items: OrderItem[];
 }
@@ -75,14 +81,20 @@ export default function OrderDetailsPage() {
 
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
-      pending: 'bg-yellow-100 text-yellow-800',
-      processing: 'bg-blue-100 text-blue-800',
-      printing: 'bg-purple-100 text-purple-800',
-      shipping: 'bg-indigo-100 text-indigo-800',
-      delivered: 'bg-green-100 text-green-800',
-      cancelled: 'bg-red-100 text-red-800',
+      PENDING_PAYMENT: 'bg-yellow-100 text-yellow-800',
+      PAID: 'bg-blue-100 text-blue-800',
+      SHIPPED: 'bg-green-100 text-green-800',
     };
     return colors[status] || 'bg-gray-100 text-gray-800';
+  };
+
+  const getStatusLabel = (status: string) => {
+    const labels: Record<string, string> = {
+      PENDING_PAYMENT: 'Pending Payment Verification',
+      PAID: 'Paid / Confirmed',
+      SHIPPED: 'Shipped',
+    };
+    return labels[status] || status;
   };
 
   if (loading) {
@@ -148,10 +160,7 @@ export default function OrderDetailsPage() {
             <CardContent className="space-y-3">
               <div className="flex items-center gap-3">
                 <span className={`text-sm px-3 py-1 rounded-full font-medium ${getStatusColor(order.status)}`}>
-                  {order.status.toUpperCase()}
-                </span>
-                <span className="text-sm text-gray-600">
-                  Payment: {order.payment_status}
+                  {getStatusLabel(order.status)}
                 </span>
               </div>
               {order.tracking_number && (
@@ -159,10 +168,68 @@ export default function OrderDetailsPage() {
                   <p className="text-sm font-medium text-blue-900">
                     Tracking Number: {order.tracking_number}
                   </p>
+                  <p className="text-xs text-blue-600 mt-1">
+                    Track your shipment on the courier&apos;s website using this number.
+                  </p>
                 </div>
               )}
             </CardContent>
           </Card>
+
+          {/* UPI Payment Details */}
+          {order.payment_method === 'upi' && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Payment Details</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Method</span>
+                    <span className="font-medium text-gray-900">UPI</span>
+                  </div>
+                  {order.upi_transaction_id && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Transaction ID</span>
+                      <span className="font-mono font-medium text-gray-900">{order.upi_transaction_id}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Status</span>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                      order.status === 'PAID' || order.status === 'SHIPPED' ? 'bg-green-100 text-green-800' :
+                      order.status === 'PENDING_PAYMENT' ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {order.status === 'PENDING_PAYMENT' ? 'Pending Verification' :
+                       order.status === 'PAID' ? 'Verified' :
+                       order.status === 'SHIPPED' ? 'Paid' :
+                       order.status}
+                    </span>
+                  </div>
+                  {order.verified_at && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Verified at</span>
+                      <span className="text-gray-900">{new Date(order.verified_at).toLocaleString()}</span>
+                    </div>
+                  )}
+                </div>
+                {order.payment_screenshot_url && (
+                  <div>
+                    <p className="text-sm text-gray-600 mb-2">Payment Screenshot</p>
+                    <a href={order.payment_screenshot_url} target="_blank" rel="noopener noreferrer">
+                      <img src={order.payment_screenshot_url} alt="Payment Screenshot" className="max-w-xs rounded-lg border" />
+                    </a>
+                  </div>
+                )}
+                {order.status === 'PENDING_PAYMENT' && (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm text-yellow-800">
+                    Your payment is being verified. We will update the status once confirmed.
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Order Items */}
           <Card>

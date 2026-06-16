@@ -27,15 +27,28 @@ export async function GET(
     }
     
     const { id } = await params;
-    
+
+    // Check if admin
+    const { data: userData } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    const isAdmin = userData?.role === 'admin';
+
     // Fetch order with items
-    const { data: order, error: orderError } = await supabase
+    let query = supabase
       .from('orders')
       .select('*')
-      .eq('id', id)
-      .eq('user_id', user.id)
-      .single();
-    
+      .eq('id', id);
+
+    if (!isAdmin) {
+      query = query.eq('user_id', user.id);
+    }
+
+    const { data: order, error: orderError } = await query.single();
+
     if (orderError || !order) {
       return NextResponse.json(
         { error: 'Order not found' },
@@ -79,6 +92,9 @@ export async function GET(
 }
 
 // PUT /api/orders/[id] - Update order (admin only for status updates)
+// Owner actions:
+//   1. Verify payment  → status: 'PAID'
+//   2. Add tracking    → status: 'SHIPPED' + tracking_number
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -86,7 +102,6 @@ export async function PUT(
   try {
     const supabase = await createClient();
     
-    // Get current user
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     
     if (authError || !user) {
@@ -96,7 +111,6 @@ export async function PUT(
       );
     }
     
-    // Check if user is admin
     const { data: userData } = await supabase
       .from('users')
       .select('role')
@@ -112,26 +126,28 @@ export async function PUT(
     
     const { id } = await params;
     const body = await request.json();
-    const { status, payment_status, tracking_number, notes } = body;
+    const { status, tracking_number, notes } = body;
     
     const updateData: any = {
       updated_at: new Date().toISOString(),
     };
     
-    if (status) updateData.status = status;
-    if (payment_status) updateData.payment_status = payment_status;
-    if (tracking_number !== undefined) updateData.tracking_number = tracking_number;
-    if (notes !== undefined) updateData.notes = notes;
+    if (status === 'PAID') {
+      updateData.status = 'PAID';
+      updateData.verified_at = new Date().toISOString();
+      updateData.verified_by = user.id;
+    }
     
-    // Set shipped_at when status changes to shipping
-    if (status === 'shipping' && !updateData.shipped_at) {
+    if (status === 'SHIPPED') {
+      updateData.status = 'SHIPPED';
       updateData.shipped_at = new Date().toISOString();
     }
     
-    // Set delivered_at when status changes to delivered
-    if (status === 'delivered' && !updateData.delivered_at) {
-      updateData.delivered_at = new Date().toISOString();
+    if (tracking_number !== undefined) {
+      updateData.tracking_number = tracking_number;
     }
+    
+    if (notes !== undefined) updateData.notes = notes;
     
     const { data: order, error } = await supabase
       .from('orders')

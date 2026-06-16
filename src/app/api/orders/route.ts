@@ -73,48 +73,59 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { shipping_address, billing_address, notes } = body;
+    const {
+      shipping_address,
+      billing_address,
+      notes,
+      customer_name,
+      customer_phone,
+      customer_email,
+      payment_method,
+      upi_transaction_id,
+      payment_screenshot_url,
+      delivery_location,
+    } = body;
 
-    if (!shipping_address || !billing_address) {
+    if (!shipping_address) {
       return NextResponse.json(
-        { error: 'shipping_address and billing_address are required' },
+        { error: 'shipping_address is required' },
         { status: 400 }
       );
     }
 
-    // Find the user's cart — cart_items are keyed by user_id directly
-    // OrderCreator.createOrderFromCart expects a cart_id; we use user_id as the cart identifier
-    // since cart_items.user_id is the cart key in this schema.
+    if (!customer_name || !customer_phone) {
+      return NextResponse.json(
+        { error: 'customer_name and customer_phone are required' },
+        { status: 400 }
+      );
+    }
+
+    if (payment_method === 'upi' && !upi_transaction_id) {
+      return NextResponse.json(
+        { error: 'upi_transaction_id is required when paying via UPI' },
+        { status: 400 }
+      );
+    }
+
     const creator = new OrderCreator(supabase);
 
-    // Validate stock before creating order
-    const { data: cartItems, error: cartError } = await supabase
-      .from('cart_items')
-      .select('*')
-      .eq('user_id', user.id);
-
-    if (cartError) {
-      return NextResponse.json({ error: 'Failed to load cart' }, { status: 500 });
-    }
-
-    if (!cartItems || cartItems.length === 0) {
-      return NextResponse.json({ error: 'Cart is empty' }, { status: 400 });
-    }
-
-    // Use OrderCreator service — pass user_id as cartId since schema uses user_id
     const result = await creator.createOrderFromCart(
-      user.id, // cartId (cart_items.user_id)
       user.id,
       {
-        shipping_address_id: typeof shipping_address === 'string'
-          ? shipping_address
-          : JSON.stringify(shipping_address),
+        shipping_address,
+        billing_address: billing_address ?? shipping_address,
         notes: notes ?? undefined,
+        payment_method: payment_method ?? undefined,
+        upi_transaction_id: upi_transaction_id ?? undefined,
+        payment_screenshot_url: payment_screenshot_url ?? undefined,
+        customer_name,
+        customer_phone,
+        customer_email: customer_email ?? undefined,
+        delivery_location: delivery_location ?? undefined,
       }
     );
 
     if (!result.success) {
-      // Distinguish stock errors (409) from other failures (422)
       const isStockError = result.error?.toLowerCase().includes('insufficient stock');
       return NextResponse.json(
         { error: result.error },
@@ -122,7 +133,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Fetch the created order to return full details
     const { data: order } = await supabase
       .from('orders')
       .select('*')
