@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/ca
 import { Button } from '@/src/components/ui/button';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import { MapPin, Check } from 'lucide-react';
 
 interface OrderItem {
   id: string;
@@ -46,6 +47,18 @@ interface Order {
   verified_at?: string;
   created_at: string;
   items: OrderItem[];
+}
+
+const STATUS_FLOW = [
+  { key: 'PENDING_PAYMENT', label: 'Order Placed', icon: '📋' },
+  { key: 'PAID', label: 'Payment Verified', icon: '✅' },
+  { key: 'SHIPPED', label: 'Shipped', icon: '📦' },
+  { key: 'DELIVERED', label: 'Delivered', icon: '🎉' },
+];
+
+function getCurrentStep(status: string): number {
+  const idx = STATUS_FLOW.findIndex(s => s.key === status);
+  return idx >= 0 ? idx : 0;
 }
 
 export default function OrderDetailsPage() {
@@ -151,7 +164,56 @@ export default function OrderDetailsPage() {
       {/* Main Content */}
       <main className="px-4 py-6 sm:px-6 max-w-4xl mx-auto">
         <div className="space-y-4">
-          
+
+          {/* Order Tracking Timeline */}
+          <Card className="border-0 shadow-sm overflow-hidden">
+            <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-4 sm:px-5 py-3 sm:py-4">
+              <div className="flex items-center gap-2">
+                <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                <h2 className="text-sm sm:text-base font-semibold text-white">Order Tracking</h2>
+              </div>
+            </div>
+            <CardContent className="p-4 sm:p-5">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                {STATUS_FLOW.map((step, idx) => {
+                  const currentStep = getCurrentStep(order.status);
+                  const isCompleted = idx <= currentStep;
+                  const isCurrent = idx === currentStep;
+                  return (
+                    <div key={step.key} className="flex-1 flex flex-col items-center">
+                      <div className={`w-9 h-9 sm:w-12 sm:h-12 rounded-full flex items-center justify-center text-base sm:text-xl transition-all ${
+                        isCompleted
+                          ? isCurrent
+                            ? 'bg-orange-500 text-white ring-4 ring-orange-100 scale-110'
+                            : 'bg-green-100 text-green-600'
+                          : 'bg-gray-100 text-gray-400'
+                      }`}>
+                        {isCompleted && !isCurrent ? <Check className="w-4 h-4 sm:w-5 sm:h-5" /> : step.icon}
+                      </div>
+                      <span className={`text-[10px] sm:text-xs mt-1.5 sm:mt-2 text-center leading-tight max-w-[60px] sm:max-w-none ${
+                        isCompleted ? 'font-semibold text-gray-900' : 'text-gray-400'
+                      }`}>
+                        {step.label}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="mt-4 flex items-center justify-between">
+                <span className="text-xs text-gray-500">
+                  {new Date(order.created_at).toLocaleDateString('en-IN', {
+                    day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                  })}
+                </span>
+                {order.tracking_number && (
+                  <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                    Tracking: {order.tracking_number}
+                  </span>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Order Status */}
           <Card>
             <CardHeader>

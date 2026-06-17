@@ -2,7 +2,7 @@ import { requireAuth } from '@/src/lib/auth/session';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/src/components/ui/card';
 import { Button } from '@/src/components/ui/button';
 import Link from 'next/link';
-import { Palette, Smartphone, ShoppingCart, Package, User, Settings, LogOut, LayoutDashboard } from 'lucide-react';
+import { Palette, Smartphone, ShoppingCart, Package, User, Settings, LogOut, LayoutDashboard, MapPin } from 'lucide-react';
 
 export default async function DashboardPage() {
   const user = await requireAuth();
@@ -69,6 +69,12 @@ export default async function DashboardPage() {
                   </Button>
                 </Link>
               </div>
+              <Link href="/track-order">
+                <Button variant="secondary" className="w-full h-11 sm:h-12 text-sm sm:text-base font-medium gap-2 bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200">
+                  <MapPin className="w-4 h-4 sm:w-5 sm:h-5" />
+                  Track My Order
+                </Button>
+              </Link>
             </CardContent>
           </Card>
 

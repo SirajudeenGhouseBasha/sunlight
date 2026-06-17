@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/card';
 import { Button } from '@/src/components/ui/button';
 import { Input } from '@/src/components/ui/input';
@@ -10,7 +10,7 @@ import { useRouter } from 'next/navigation';
 import { useCart } from '@/src/context/CartContext';
 import { LocationPicker } from '@/src/components/map/LocationPicker';
 import type { LocationData } from '@/src/components/map/LocationPicker';
-import { ChevronLeft, ChevronRight, Check, CreditCard, MapPin, User, Package } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Check, CreditCard, MapPin, User, Package, X, ExternalLink } from 'lucide-react';
 
 interface UpiConfig {
   upi_id: string;
@@ -45,6 +45,8 @@ export default function CheckoutPage() {
   const [screenshotUrl, setScreenshotUrl] = useState('');
 
   const [step, setStep] = useState<'info' | 'payment' | 'confirm'>('info');
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [placedOrderId, setPlacedOrderId] = useState<string | null>(null);
 
   useEffect(() => {
     refreshCart();
@@ -109,7 +111,8 @@ export default function CheckoutPage() {
       }
 
       await clearCart();
-      router.push(`/orders/${data.order.id}`);
+      setPlacedOrderId(data.order.id);
+      setShowSuccessModal(true);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -441,6 +444,54 @@ export default function CheckoutPage() {
           )}
         </form>
       </main>
+
+      {showSuccessModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 sm:p-8 animate-in zoom-in-95 duration-200">
+            <div className="text-center">
+              <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+                <Check className="w-8 h-8 text-green-600" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Order Placed! 🎉</h2>
+              <p className="text-gray-600 mb-6">
+                Your order has been placed successfully. We will verify your payment and update the status soon.
+              </p>
+            </div>
+
+            <div className="bg-gray-50 rounded-lg p-4 mb-6">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm text-gray-600">Order ID</span>
+                <span className="text-sm font-semibold text-gray-900">#{placedOrderId?.slice(0, 8)}</span>
+              </div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm text-gray-600">Total Amount</span>
+                <span className="text-lg font-bold text-green-700">₹{totalAmount.toFixed(2)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600">Payment</span>
+                <span className="text-sm font-semibold text-yellow-600">Pending Verification</span>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <Button
+                onClick={() => router.push(`/orders/${placedOrderId}`)}
+                className="w-full h-12 text-base gap-2"
+              >
+                View Order Details
+                <ExternalLink className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => router.push('/products')}
+                className="w-full h-12 text-base"
+              >
+                Continue Shopping
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
