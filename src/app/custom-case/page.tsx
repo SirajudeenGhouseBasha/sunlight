@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { MainNav } from '@/src/components/navigation/MainNav';
+
 import { Button } from '@/src/components/ui/button';
 import { Card, CardContent } from '@/src/components/ui/card';
 import { Select, SelectOption } from '@/src/components/ui/select';
@@ -41,8 +41,6 @@ export default function CustomCaseSelectionPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-orange-50">
-      <MainNav />
-
       {/* Hero header */}
       <section className="relative overflow-hidden bg-gradient-to-r from-orange-600 via-orange-500 to-amber-500 text-white py-10 sm:py-14 px-4 sm:px-6">
         <div className="absolute inset-0 opacity-10">

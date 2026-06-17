@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, RefObject } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { MainNav } from '@/src/components/navigation/MainNav';
+
 import { motion, useInView as useFramerInView } from 'framer-motion';
 import { Check, Palette, Sparkle, Sparkles, Star } from 'lucide-react';
 import { PredesignedProductGallery } from '@/src/components/products/PredesignedProductGallery';
@@ -524,8 +524,6 @@ export function HomePageClientAdvanced({
       `}</style>
 
       <Toaster position="bottom-right" />
-
-      <MainNav />
 
       {/* ─── HERO ─── */}
       <section style={{

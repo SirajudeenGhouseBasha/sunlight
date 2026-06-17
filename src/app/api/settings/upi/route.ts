@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/src/lib/supabase/server';
+import { createAdminClient } from '@/src/lib/supabase/admin';
 
 export async function GET() {
   try {
@@ -50,7 +51,8 @@ export async function PUT(request: NextRequest) {
 
     const body = await request.json();
 
-    const { error } = await supabase
+    const adminClient = createAdminClient();
+    const { error } = await adminClient
       .from('settings')
       .upsert({ key: 'upi_config', value: body }, { onConflict: 'key' });
 

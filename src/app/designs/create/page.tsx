@@ -9,7 +9,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { MainNav } from '@/src/components/navigation/MainNav';
+
 import { Button } from '@/src/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/card';
 import { Input } from '@/src/components/ui/input';
@@ -158,8 +158,6 @@ export default function CreateDesignPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      <MainNav />
-
       {isAuthenticated === null ? (
         <main className="px-4 py-8 sm:px-6 max-w-4xl mx-auto">
           <div className="text-center py-12">

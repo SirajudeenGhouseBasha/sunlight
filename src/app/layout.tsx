@@ -4,6 +4,7 @@ import "./globals.css";
 import { CartProvider } from "@/src/context/CartContext";
 import { QueryProvider } from "@/src/components/providers/query-provider";
 import { RouteLoader } from "@/src/components/providers/RouteLoader";
+import { SiteHeader } from "@/src/components/navigation/SiteHeader";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -40,6 +41,7 @@ export default function RootLayout({
       <body className="sunlight-atmosphere m-0 p-0 h-full">
         <div className="sunlight-atmosphere__content">
           <RouteLoader />
+          <SiteHeader />
           <QueryProvider>
             <CartProvider>
               {children}
