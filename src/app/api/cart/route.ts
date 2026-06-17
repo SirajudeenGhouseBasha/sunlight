@@ -80,6 +80,7 @@ export async function POST(request: NextRequest) {
       // Predesigned fields
       variant_id,
       design_id,
+      predesigned_product_id,
       // Custom fields
       model_id,
       product_type_id,
@@ -89,11 +90,14 @@ export async function POST(request: NextRequest) {
       customization_options,
     } = body;
 
+    // Support predesigned_product_id as an alias for design_id
+    const resolvedDesignId = design_id || (predesigned_product_id || undefined);
+
     if (!quantity || quantity < 1) {
       return NextResponse.json({ error: 'Valid quantity is required' }, { status: 400 });
     }
 
-    const hasDesign = design_id != null && design_id !== '';
+    const hasDesign = resolvedDesignId != null && resolvedDesignId !== '';
     const hasCustomData = custom_design_data != null;
 
     if (hasDesign && hasCustomData) {
@@ -137,7 +141,7 @@ export async function POST(request: NextRequest) {
         .select('id, quantity')
         .eq('user_id', user.id)
         .eq('variant_id', variant_id)
-        .eq('design_id', design_id)
+        .eq('design_id', resolvedDesignId)
         .maybeSingle();
 
       if (existing) {
@@ -160,7 +164,7 @@ export async function POST(request: NextRequest) {
         .insert({
           user_id: user.id,
           variant_id,
-          design_id,
+          design_id: resolvedDesignId,
           quantity,
           unit_price: unitPrice,
           total_price: unitPrice * quantity,

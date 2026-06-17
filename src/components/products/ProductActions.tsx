@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/src/components/ui/button';
+import { useCart } from '@/src/context/CartContext';
+import { ShoppingBag, Zap, Sparkles } from 'lucide-react';
 
 interface ProductActionsProps {
   variantId: string;
@@ -12,107 +14,82 @@ interface ProductActionsProps {
 
 export function ProductActions({ variantId, designId, isPredesigned = false }: ProductActionsProps) {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
+  const { addToCart, refreshCart, loading: cartLoading } = useCart();
+  const [adding, setAdding] = useState(false);
+  const [buying, setBuying] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleAddToCart = async () => {
-    setLoading(true);
+    setAdding(true);
     setError(null);
     try {
-      const body: any = { variant_id: variantId, quantity: 1 };
-      
-      // For predesigned products, add the predesigned_product_id
-      if (isPredesigned) {
-        body.predesigned_product_id = variantId;
-      }
-      
-      // Add design_id if provided
-      if (designId) {
-        body.design_id = designId;
-      }
-      
-      const res = await fetch('/api/cart', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      
-      if (res.status === 401) {
-        router.push('/auth/login');
-        return;
-      }
-      if (!res.ok) throw new Error('Failed to add item to cart');
-      alert('Successfully added case to cart!');
+      await addToCart(variantId, isPredesigned ? variantId : designId);
     } catch (err) {
-      setError('Could not add to cart.');
+      setError(err instanceof Error ? err.message : 'Could not add to cart.');
     } finally {
-      setLoading(false);
+      setAdding(false);
     }
   };
 
   const handleBuyNow = async () => {
-    setLoading(true);
+    setBuying(true);
     setError(null);
     try {
-      const body: any = { variant_id: variantId, quantity: 1 };
-      
-      // For predesigned products, add the predesigned_product_id
-      if (isPredesigned) {
-        body.predesigned_product_id = variantId;
-      }
-      
-      // Add design_id if provided
-      if (designId) {
-        body.design_id = designId;
-      }
-      
-      const res = await fetch('/api/cart', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      
-      if (res.status === 401) {
-        router.push('/auth/login');
-        return;
-      }
-      if (!res.ok) throw new Error('Failed to buy item');
-      router.push('/cart');
+      await addToCart(variantId, isPredesigned ? variantId : designId);
+      await refreshCart();
+      router.push('/checkout');
     } catch (err) {
-      setError('Could not complete purchase.');
-    } finally {
-      setLoading(false);
+      setError(err instanceof Error ? err.message : 'Could not complete purchase.');
+      setBuying(false);
     }
   };
 
+  const isLoading = adding || buying || cartLoading;
+
   return (
-    <div className="space-y-4">
-      {error && <p className="text-red-500 text-sm">{error}</p>}
-      <Button
-        size="lg"
-        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold"
-        onClick={handleAddToCart}
-        disabled={loading}
-      >
-        {loading ? 'Adding...' : 'Add to Cart'}
-      </Button>
-      <Button
-        variant="outline"
-        size="lg"
-        className="w-full text-blue-600 border-blue-600 hover:bg-blue-50 font-semibold"
-        onClick={handleBuyNow}
-        disabled={loading}
-      >
-        {loading ? 'Processing...' : 'Buy Now'}
-      </Button>
+    <div className="space-y-3">
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 text-xs sm:text-sm px-3 py-2 rounded-lg">
+          {error}
+        </div>
+      )}
+      <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+        <Button
+          size="lg"
+          className="flex-1 h-12 sm:h-14 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm sm:text-base gap-2 shadow-sm"
+          onClick={handleAddToCart}
+          disabled={isLoading}
+        >
+          {adding ? (
+            <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+          ) : (
+            <ShoppingBag className="w-4 h-4 sm:w-5 sm:h-5" />
+          )}
+          {adding ? 'Adding...' : 'Add to Cart'}
+        </Button>
+        <Button
+          size="lg"
+          className="flex-1 h-12 sm:h-14 bg-orange-500 hover:bg-orange-600 text-white font-semibold text-sm sm:text-base gap-2 shadow-sm"
+          onClick={handleBuyNow}
+          disabled={isLoading}
+        >
+          {buying ? (
+            <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+          ) : (
+            <Zap className="w-4 h-4 sm:w-5 sm:h-5" />
+          )}
+          {buying ? 'Processing...' : 'Buy Now'}
+        </Button>
+      </div>
       {!isPredesigned && (
-        <a href={`/products/${variantId}?customize=true`}>
+        <a href={`/products/${variantId}?customize=true`} className="block">
           <Button
             variant="outline"
             size="lg"
-            className="w-full mt-2 border-orange-300 text-orange-600 hover:bg-orange-50 font-semibold"
+            className="w-full h-11 sm:h-12 border-orange-300 text-orange-600 hover:bg-orange-50 font-medium text-sm gap-2"
           >
-            🎨 Customize This Case
+            <Sparkles className="w-4 h-4" />
+            Customize This Case
           </Button>
         </a>
       )}

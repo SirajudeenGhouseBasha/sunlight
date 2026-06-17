@@ -1,54 +1,60 @@
-/**
- * AdminSidebar Component
- *
- * Mobile-first sidebar with:
- * - Desktop: fixed 256px left panel
- * - Tablet/Mobile: slide-in drawer triggered by hamburger
- * Requirements: 2.1-2.5, 24.1-24.3
- */
-
 'use client';
 
 import React, { useEffect } from 'react';
+import Link from 'next/link';
 import { cn } from '@/src/lib/utils';
+import {
+  LayoutDashboard,
+  ShoppingCart,
+  Tags,
+  Smartphone,
+  Package,
+  Palette,
+  Sparkles,
+  Users,
+  Settings,
+  ChevronRight,
+  LogOut,
+  Home,
+} from 'lucide-react';
 
 const navigation = [
   {
-    label: 'Section 1 — Orders',
+    label: 'Orders',
     items: [
-      { name: 'Orders', key: 'orders', icon: '📋' },
+      { name: 'Orders', key: 'orders', icon: ShoppingCart },
     ],
   },
   {
-    label: 'Section 2 — Catalogue',
+    label: 'Catalogue',
     items: [
-      { name: 'Brands',         key: 'brands',         icon: '🏷️' },
-      { name: 'Models',         key: 'models',         icon: '📱' },
-    ],
-  },
-   {
-    label: 'Section 3 — Product Type',
-    items: [
-      { name: 'Product Types',  key: 'product-types',  icon: '📦' },
+      { name: 'Brands', key: 'brands', icon: Tags },
+      { name: 'Models', key: 'models', icon: Smartphone },
     ],
   },
   {
-    label: 'Section 4 — Cases',
+    label: 'Product Types',
     items: [
-      { name: 'Custom Designed Case',  key: 'custom-case',      icon: '🎨' },
-      { name: 'Predesigned Case',      key: 'predesigned-case', icon: '✨' },
+      { name: 'Product Types', key: 'product-types', icon: Package },
     ],
   },
   {
-    label: 'Section 5 — Users',
+    label: 'Cases',
     items: [
-      { name: 'Users', key: 'users', icon: '👥' },
+      { name: 'Custom Designed Case', key: 'custom-case', icon: Palette },
+      { name: 'Predesigned Case', key: 'predesigned-case', icon: Sparkles },
     ],
   },
   {
-    label: 'Section 6 — Settings',
+    label: 'Users',
     items: [
-      { name: 'Payment', key: 'payment-settings', icon: '💳' },
+      { name: 'Users', key: 'users', icon: Users },
+    ],
+  },
+  {
+    label: 'Settings',
+    items: [
+      { name: 'Payment', key: 'payment-settings', icon: Settings },
     ],
   },
 ];
@@ -56,8 +62,8 @@ const navigation = [
 export interface AdminSidebarProps {
   activeModule?: string;
   onModuleChange?: (moduleKey: string) => void;
-  isOpen?: boolean;           // mobile drawer open state
-  onClose?: () => void;       // close drawer
+  isOpen?: boolean;
+  onClose?: () => void;
   className?: string;
 }
 
@@ -68,7 +74,6 @@ export function AdminSidebar({
   onClose,
   className,
 }: AdminSidebarProps) {
-  // Lock body scroll when mobile drawer is open
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
@@ -80,26 +85,28 @@ export function AdminSidebar({
 
   const handleClick = (key: string) => {
     onModuleChange?.(key);
-    onClose?.();           // auto-close drawer on mobile after selection
+    onClose?.();
   };
 
   const isActive = (key: string) => activeModule === key;
 
   const SidebarContent = () => (
-    <div className="flex flex-col h-full">
-      {/* Logo */}
-      <div className="h-16 flex items-center justify-between px-5 border-b border-gray-200 shrink-0">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-base">S</span>
+    <div className="flex flex-col h-full bg-white">
+      {/* Logo + Brand */}
+      <div className="h-16 flex items-center justify-between px-5 border-b border-gray-100 shrink-0">
+        <Link href="/" className="flex items-center gap-2.5 group">
+          <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-amber-500 rounded-lg flex items-center justify-center shadow-sm group-hover:shadow-md transition-shadow">
+            <span className="text-white font-bold text-sm">S</span>
           </div>
-          <span className="text-lg font-bold text-gray-900">Sunlight</span>
-        </div>
-        {/* Close button — mobile only */}
+          <div>
+            <span className="text-base font-bold text-gray-900">Sunlight</span>
+            <span className="hidden sm:inline text-[10px] text-gray-400 ml-1.5 font-medium">Admin</span>
+          </div>
+        </Link>
         <button
           onClick={onClose}
           aria-label="Close menu"
-          className="lg:hidden p-1.5 rounded-md text-gray-500 hover:bg-gray-100 transition-colors"
+          className="lg:hidden p-1.5 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -107,51 +114,66 @@ export function AdminSidebar({
         </button>
       </div>
 
-      {/* Nav */}
-      <nav className="flex-1 overflow-y-auto py-4 px-3">
+      {/* Navigation */}
+      <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
         {navigation.map(({ label, items }, sectionIndex) => (
           <React.Fragment key={label}>
-            {/* Visual divider between sections */}
             {sectionIndex > 0 && (
-              <hr className="my-3 border-gray-200" />
+              <div className="my-3 pt-3 border-t border-gray-100" />
             )}
-            <div className="mb-2">
-              <p className="px-2 mb-1.5 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
+            <div className="mb-1">
+              <p className="px-3 mb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-widest">
                 {label}
               </p>
               <ul className="space-y-0.5">
-                {items.map((item) => (
-                  <li key={item.key}>
-                    <button
-                      onClick={() => handleClick(item.key)}
-                      aria-current={isActive(item.key) ? 'page' : undefined}
-                      className={cn(
-                        'flex items-center w-full gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-colors',
-                        isActive(item.key)
-                          ? 'bg-green-600 text-white shadow-sm'
-                          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 active:bg-gray-200',
-                      )}
-                    >
-                      <span className="text-base leading-none">{item.icon}</span>
-                      {item.name}
-                    </button>
-                  </li>
-                ))}
+                {items.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <li key={item.key}>
+                      <button
+                        onClick={() => handleClick(item.key)}
+                        aria-current={isActive(item.key) ? 'page' : undefined}
+                        className={cn(
+                          'flex items-center w-full gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-150',
+                          isActive(item.key)
+                            ? 'bg-gradient-to-r from-orange-50 to-amber-50 text-orange-700 shadow-sm border border-orange-200'
+                            : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50 active:bg-gray-100',
+                        )}
+                      >
+                        <Icon className={cn(
+                          'w-4 h-4 shrink-0',
+                          isActive(item.key) ? 'text-orange-600' : 'text-gray-400',
+                        )} />
+                        <span className="flex-1 text-left">{item.name}</span>
+                        {isActive(item.key) && (
+                          <ChevronRight className="w-3.5 h-3.5 text-orange-400" />
+                        )}
+                      </button>
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           </React.Fragment>
         ))}
       </nav>
 
-      {/* User profile */}
-      <div className="p-4 border-t border-gray-200 shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-green-100 flex items-center justify-center shrink-0">
-            <span className="text-sm font-semibold text-green-700">AD</span>
+      {/* Bottom actions */}
+      <div className="p-3 border-t border-gray-100 space-y-1">
+        <Link
+          href="/"
+          className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-gray-500 rounded-lg hover:text-gray-900 hover:bg-gray-50 transition-all duration-150"
+        >
+          <Home className="w-4 h-4 text-gray-400" />
+          Back to Store
+        </Link>
+        <div className="flex items-center gap-3 px-3 py-2.5">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-100 to-amber-100 flex items-center justify-center shrink-0">
+            <span className="text-xs font-semibold text-orange-700">AD</span>
           </div>
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-gray-900 truncate">Admin User</p>
-            <p className="text-xs text-gray-500 truncate">admin@sunlight.com</p>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium text-gray-900 truncate">Admin</p>
+            <p className="text-[11px] text-gray-400 truncate">admin@sunlight.com</p>
           </div>
         </div>
       </div>
@@ -160,32 +182,31 @@ export function AdminSidebar({
 
   return (
     <>
-      {/* ── Desktop: fixed sidebar ── */}
+      {/* Desktop: fixed sidebar */}
       <aside
         className={cn(
-          'hidden lg:flex flex-col fixed inset-y-0 left-0 z-30 w-64 bg-white border-r border-gray-200',
+          'hidden lg:flex flex-col fixed inset-y-0 left-0 z-30 w-64 bg-white border-r border-gray-100',
           className,
         )}
       >
         <SidebarContent />
       </aside>
 
-      {/* ── Mobile: backdrop + slide-in drawer ── */}
-      {/* Backdrop */}
+      {/* Mobile: backdrop */}
       <div
         onClick={onClose}
         aria-hidden="true"
         className={cn(
-          'lg:hidden fixed inset-0 z-40 bg-black/40 backdrop-blur-sm transition-opacity duration-300',
+          'lg:hidden fixed inset-0 z-40 bg-black/30 backdrop-blur-sm transition-opacity duration-300',
           isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none',
         )}
       />
 
-      {/* Drawer */}
+      {/* Mobile: slide-in drawer */}
       <aside
         className={cn(
-          'lg:hidden fixed inset-y-0 left-0 z-50 w-72 bg-white border-r border-gray-200 flex flex-col',
-          'transform transition-transform duration-300 ease-in-out',
+          'lg:hidden fixed inset-y-0 left-0 z-50 w-72 bg-white border-r border-gray-100 flex flex-col',
+          'transform transition-transform duration-300 ease-in-out shadow-2xl',
           isOpen ? 'translate-x-0' : '-translate-x-full',
         )}
       >
