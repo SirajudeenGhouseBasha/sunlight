@@ -180,11 +180,11 @@ export function CartItem({ item, onRemove, onQuantityChange, isRemoving }: Props
           {/* Price */}
           <div style={{ textAlign: 'right' }}>
             <div style={{ fontSize: 15, fontWeight: 700, color: '#111' }}>
-              ${Number(item.total_price).toFixed(2)}
+              ₹{Number(item.total_price).toFixed(2)}
             </div>
             {item.quantity > 1 && (
               <div style={{ fontSize: 11, color: '#9ca3af' }}>
-                ${Number(item.unit_price).toFixed(2)} each
+                ₹{Number(item.unit_price).toFixed(2)} each
               </div>
             )}
           </div>

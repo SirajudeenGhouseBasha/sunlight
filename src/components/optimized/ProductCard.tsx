@@ -55,7 +55,7 @@ export const ProductCard = memo<ProductCardProps>(({
         
         <div className="flex items-center justify-between">
           <span className="text-lg font-bold text-green-600">
-            ${product.price.toFixed(2)}
+            ₹{product.price.toFixed(2)}
           </span>
           
           {showAddToCart && onAddToCart && (

@@ -95,7 +95,7 @@ export function calculateOrderItemTotal(input: OrderItemPricingInput): number {
  * Formats a numeric price value as a fixed two-decimal-place string.
  *
  * The value is treated as a standard decimal currency amount (e.g. 9.99
- * represents £9.99 / $9.99). Negative values are clamped to "0.00".
+ * represents ₹9.99). Negative values are clamped to "0.00".
  *
  * @example
  * formatPrice(9.9)    // "9.90"

@@ -112,7 +112,7 @@ export function ProductListExample() {
               {product.name}
             </h3>
             <p className="text-lg font-bold text-gray-900 mb-2">
-              ${product.price}
+              ₹{product.price}
             </p>
             <button
               onClick={() => handleAddToCart(product.id)}

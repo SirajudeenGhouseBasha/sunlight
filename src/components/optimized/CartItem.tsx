@@ -71,7 +71,7 @@ export const CartItem = memo<CartItemProps>(({
           </p>
         )}
         <p className="text-sm font-semibold text-green-600">
-          ${item.price.toFixed(2)}
+          ₹{item.price.toFixed(2)}
         </p>
       </div>
       

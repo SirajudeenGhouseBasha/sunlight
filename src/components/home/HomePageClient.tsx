@@ -279,7 +279,7 @@ function ProductCard({ product, delay, onAddToCart }: ProductCardProps) {
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span style={{ fontSize: 18, fontWeight: 700, color: '#000' }}>
-              ${product.price.toFixed(2)}
+              ₹{product.price.toFixed(2)}
             </span>
 
             <motion.button

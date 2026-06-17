@@ -258,10 +258,10 @@ export default function OrderDetailsPage() {
                   </div>
                   <div className="text-right">
                     <p className="font-bold text-gray-900">
-                      ${parseFloat(item.total_price.toString()).toFixed(2)}
+                      ₹{parseFloat(item.total_price.toString()).toFixed(2)}
                     </p>
                     <p className="text-sm text-gray-500 mt-1">
-                      ${parseFloat(item.unit_price.toString()).toFixed(2)} each
+                      ₹{parseFloat(item.unit_price.toString()).toFixed(2)} each
                     </p>
                   </div>
                 </div>
@@ -307,14 +307,14 @@ export default function OrderDetailsPage() {
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Subtotal</span>
                 <span className="font-medium">
-                  ${parseFloat(order.subtotal.toString()).toFixed(2)}
+                  ₹{parseFloat(order.subtotal.toString()).toFixed(2)}
                 </span>
               </div>
               <div className="border-t pt-2">
                 <div className="flex justify-between">
                   <span className="text-lg font-semibold">Total</span>
                   <span className="text-2xl font-bold text-blue-600">
-                    ${parseFloat(order.total_amount.toString()).toFixed(2)}
+                    ₹{parseFloat(order.total_amount.toString()).toFixed(2)}
                   </span>
                 </div>
               </div>

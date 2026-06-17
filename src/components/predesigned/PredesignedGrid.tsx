@@ -204,7 +204,7 @@ function PredesignedCard({ product, index }: { product: PredesignedProduct; inde
             {/* Price */}
             <div className="flex items-center justify-between">
               <span className="text-lg font-bold text-gray-900">
-                ${product.price.toFixed(2)}
+                ₹{product.price.toFixed(2)}
               </span>
               <span className="text-xs text-gray-500">
                 Stock: {product.stock_quantity}
@@ -250,7 +250,7 @@ export function PredesignedGrid({ products }: PredesignedGridProps) {
       </div>
 
       {/* Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
         {products.map((product, index) => (
           <PredesignedCard 
             key={product.id} 

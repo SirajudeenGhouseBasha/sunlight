@@ -10,6 +10,7 @@ import { useRouter } from 'next/navigation';
 import { useCart } from '@/src/context/CartContext';
 import { LocationPicker } from '@/src/components/map/LocationPicker';
 import type { LocationData } from '@/src/components/map/LocationPicker';
+import { ChevronLeft, ChevronRight, Check, CreditCard, MapPin, User, Package } from 'lucide-react';
 
 interface UpiConfig {
   upi_id: string;
@@ -57,9 +58,7 @@ export default function CheckoutPage() {
         const data = await res.json();
         setUpiConfig(data);
       }
-    } catch {
-      // Use defaults if fetch fails
-    }
+    } catch {}
   };
 
   const handleScreenshotUpload = async (file: File) => {
@@ -90,17 +89,17 @@ export default function CheckoutPage() {
       const response = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            customer_name: customerName,
-            customer_phone: customerPhone,
-            customer_email: customerEmail || undefined,
-            shipping_address: shippingAddress,
-            delivery_location: deliveryLocation || undefined,
-            notes: '',
-            payment_method: 'upi',
-            upi_transaction_id: upiTransactionId,
-            payment_screenshot_url: screenshotUrl || undefined,
-          }),
+        body: JSON.stringify({
+          customer_name: customerName,
+          customer_phone: customerPhone,
+          customer_email: customerEmail || undefined,
+          shipping_address: shippingAddress,
+          delivery_location: deliveryLocation || undefined,
+          notes: '',
+          payment_method: 'upi',
+          upi_transaction_id: upiTransactionId,
+          payment_screenshot_url: screenshotUrl || undefined,
+        }),
       });
 
       const data = await response.json();
@@ -135,15 +134,9 @@ export default function CheckoutPage() {
         <Card className="max-w-md w-full mx-4">
           <CardContent className="p-8 text-center">
             <div className="text-6xl mb-4">🛒</div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">
-              Your cart is empty
-            </h2>
-            <p className="text-gray-600 mb-6">
-              Add items to your cart before checking out
-            </p>
-            <Link href="/dashboard">
-              <Button className="h-11">Start Shopping</Button>
-            </Link>
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">Your cart is empty</h2>
+            <p className="text-gray-600 mb-6">Add items to your cart before checking out</p>
+            <Link href="/dashboard"><Button className="h-11">Start Shopping</Button></Link>
           </CardContent>
         </Card>
       </div>
@@ -154,14 +147,20 @@ export default function CheckoutPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Header */}
       <header className="bg-white shadow-sm border-b sticky top-0 z-10">
-        <div className="px-4 py-4 sm:px-6">
+        <div className="px-4 py-3 sm:px-6">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-xl font-bold text-gray-900">Checkout</h1>
-              <p className="text-sm text-gray-600 mt-1">Complete your order</p>
+            <div className="flex items-center gap-3">
+              <Link href="/cart" className="sm:hidden">
+                <ChevronLeft className="w-5 h-5 text-gray-600" />
+              </Link>
+              <div>
+                <h1 className="text-lg sm:text-xl font-bold text-gray-900">Checkout</h1>
+                <p className="text-xs sm:text-sm text-gray-500">{cartItems.length} item{cartItems.length !== 1 ? 's' : ''}</p>
+              </div>
             </div>
-            <Link href="/cart">
+            <Link href="/cart" className="hidden sm:block">
               <Button variant="outline" size="sm">← Back to Cart</Button>
             </Link>
           </div>
@@ -169,289 +168,230 @@ export default function CheckoutPage() {
       </header>
 
       {/* Step Indicator */}
-      <div className="px-4 sm:px-6 max-w-4xl mx-auto pt-4">
-        <div className="flex items-center gap-2 text-sm">
-          <span className={`px-3 py-1 rounded-full ${step === 'info' ? 'bg-green-600 text-white' : 'bg-green-100 text-green-800'}`}>1. Info</span>
-          <div className="h-px flex-1 bg-gray-300" />
-          <span className={`px-3 py-1 rounded-full ${step === 'payment' ? 'bg-green-600 text-white' : step === 'confirm' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-400'}`}>2. Pay</span>
-          <div className="h-px flex-1 bg-gray-300" />
-          <span className={`px-3 py-1 rounded-full ${step === 'confirm' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-400'}`}>3. Confirm</span>
+      <div className="px-4 sm:px-6 max-w-4xl mx-auto pt-4 sm:pt-6">
+        <div className="flex items-center gap-2 text-xs sm:text-sm">
+          <span className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full transition-colors ${
+            step === 'info' ? 'bg-green-600 text-white' : step === 'payment' || step === 'confirm' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-400'
+          }`}>
+            <User className="w-3 h-3" />
+            <span className="hidden sm:inline">Info</span>
+          </span>
+          <div className="flex-1 h-px bg-gray-300" />
+          <span className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full transition-colors ${
+            step === 'payment' ? 'bg-green-600 text-white' : step === 'confirm' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-400'
+          }`}>
+            <CreditCard className="w-3 h-3" />
+            <span className="hidden sm:inline">Payment</span>
+          </span>
+          <div className="flex-1 h-px bg-gray-300" />
+          <span className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full transition-colors ${
+            step === 'confirm' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-400'
+          }`}>
+            <Package className="w-3 h-3" />
+            <span className="hidden sm:inline">Review</span>
+          </span>
         </div>
       </div>
 
-      <main className="px-4 py-6 sm:px-6 max-w-4xl mx-auto">
+      <main className="px-4 py-4 sm:px-6 max-w-4xl mx-auto">
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg text-sm">
-              {error}
-            </div>
+            <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg text-sm">{error}</div>
           )}
 
-          {/* STEP 1: Customer Info + Shipping */}
+          {/* STEP 1: Customer Info */}
           {step === 'info' && (
             <>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Customer Information</CardTitle>
+              <Card className="border-0 shadow-sm">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-2">
+                    <User className="w-5 h-5 text-green-600" />
+                    <CardTitle className="text-base sm:text-lg">Customer Information</CardTitle>
+                  </div>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-3 sm:space-y-4">
                   <div>
-                    <Label htmlFor="name">Full Name *</Label>
-                    <Input
-                      id="name"
-                      value={customerName}
-                      onChange={(e) => setCustomerName(e.target.value)}
-                      placeholder="John Doe"
-                      required
-                      className="h-11 mt-1"
-                    />
+                    <Label htmlFor="name" className="text-sm">Full Name *</Label>
+                    <Input id="name" value={customerName} onChange={(e) => setCustomerName(e.target.value)}
+                      placeholder="John Doe" required className="h-11 mt-1" />
                   </div>
-                  <div>
-                    <Label htmlFor="phone">Phone Number *</Label>
-                    <Input
-                      id="phone"
-                      type="tel"
-                      value={customerPhone}
-                      onChange={(e) => setCustomerPhone(e.target.value)}
-                      placeholder="+919876543210"
-                      required
-                      className="h-11 mt-1"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="email">Email (optional)</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={customerEmail}
-                      onChange={(e) => setCustomerEmail(e.target.value)}
-                      placeholder="john@example.com"
-                      className="h-11 mt-1"
-                    />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                    <div>
+                      <Label htmlFor="phone" className="text-sm">Phone Number *</Label>
+                      <Input id="phone" type="tel" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)}
+                        placeholder="+919876543210" required className="h-11 mt-1" />
+                    </div>
+                    <div>
+                      <Label htmlFor="email" className="text-sm">Email (optional)</Label>
+                      <Input id="email" type="email" value={customerEmail} onChange={(e) => setCustomerEmail(e.target.value)}
+                        placeholder="john@example.com" className="h-11 mt-1" />
+                    </div>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>Shipping Address</CardTitle>
+              <Card className="border-0 shadow-sm">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-2">
+                    <MapPin className="w-5 h-5 text-green-600" />
+                    <CardTitle className="text-base sm:text-lg">Shipping Address</CardTitle>
+                  </div>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-3 sm:space-y-4">
                   <div>
-                    <Label htmlFor="shipping_street">Street Address *</Label>
-                    <Input
-                      id="shipping_street"
-                      value={shippingAddress.street}
+                    <Label htmlFor="shipping_street" className="text-sm">Street Address *</Label>
+                    <Input id="shipping_street" value={shippingAddress.street}
                       onChange={(e) => setShippingAddress({ ...shippingAddress, street: e.target.value })}
-                      placeholder="123 Main St"
-                      required
-                      className="h-11 mt-1"
-                    />
+                      placeholder="123 Main St" required className="h-11 mt-1" />
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div>
-                      <Label htmlFor="shipping_city">City *</Label>
-                      <Input
-                        id="shipping_city"
-                        value={shippingAddress.city}
+                      <Label htmlFor="shipping_city" className="text-sm">City *</Label>
+                      <Input id="shipping_city" value={shippingAddress.city}
                         onChange={(e) => setShippingAddress({ ...shippingAddress, city: e.target.value })}
-                        placeholder="New York"
-                        required
-                        className="h-11 mt-1"
-                      />
+                        placeholder="Mumbai" required className="h-11 mt-1" />
                     </div>
                     <div>
-                      <Label htmlFor="shipping_state">State/Province *</Label>
-                      <Input
-                        id="shipping_state"
-                        value={shippingAddress.state}
+                      <Label htmlFor="shipping_state" className="text-sm">State *</Label>
+                      <Input id="shipping_state" value={shippingAddress.state}
                         onChange={(e) => setShippingAddress({ ...shippingAddress, state: e.target.value })}
-                        placeholder="NY"
-                        required
-                        className="h-11 mt-1"
-                      />
+                        placeholder="Maharashtra" required className="h-11 mt-1" />
                     </div>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div>
-                      <Label htmlFor="shipping_country">Country *</Label>
-                      <Input
-                        id="shipping_country"
-                        value={shippingAddress.country}
-                        onChange={(e) => setShippingAddress({ ...shippingAddress, country: e.target.value })}
-                        placeholder="United States"
-                        required
-                        className="h-11 mt-1"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="shipping_postal">Postal Code *</Label>
-                      <Input
-                        id="shipping_postal"
-                        value={shippingAddress.postal_code}
+                      <Label htmlFor="shipping_postal" className="text-sm">Postal Code *</Label>
+                      <Input id="shipping_postal" value={shippingAddress.postal_code}
                         onChange={(e) => setShippingAddress({ ...shippingAddress, postal_code: e.target.value })}
-                        placeholder="10001"
-                        required
-                        className="h-11 mt-1"
-                      />
+                        placeholder="400001" required className="h-11 mt-1" />
+                    </div>
+                    <div>
+                      <Label htmlFor="shipping_country" className="text-sm">Country *</Label>
+                      <Input id="shipping_country" value={shippingAddress.country}
+                        onChange={(e) => setShippingAddress({ ...shippingAddress, country: e.target.value })}
+                        placeholder="India" required className="h-11 mt-1" />
                     </div>
                   </div>
-
                   <hr className="border-neutral-100" />
-
-                  <LocationPicker
-                    onLocationChange={setDeliveryLocation}
-                  />
+                  <LocationPicker onLocationChange={setDeliveryLocation} />
                 </CardContent>
               </Card>
 
-              <Button
-                type="button"
-                onClick={() => {
-                  if (!customerName || !customerPhone || !shippingAddress.street || !shippingAddress.city || !shippingAddress.state || !shippingAddress.country || !shippingAddress.postal_code) {
-                    setError('Please fill in all required fields');
-                    return;
-                  }
-                  setError('');
-                  setStep('payment');
-                }}
-                className="w-full h-12 text-base"
-              >
-                Continue to Payment
+              <Button type="button" onClick={() => {
+                if (!customerName || !customerPhone || !shippingAddress.street || !shippingAddress.city || !shippingAddress.state || !shippingAddress.country || !shippingAddress.postal_code) {
+                  setError('Please fill in all required fields'); return;
+                }
+                setError(''); setStep('payment');
+              }} className="w-full h-12 text-base gap-2">
+                Continue to Payment <ChevronRight className="w-4 h-4" />
               </Button>
             </>
           )}
 
-          {/* STEP 2: UPI Payment */}
+          {/* STEP 2: Payment */}
           {step === 'payment' && (
             <>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Pay via UPI</CardTitle>
+              <Card className="border-0 shadow-sm">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-2">
+                    <CreditCard className="w-5 h-5 text-green-600" />
+                    <CardTitle className="text-base sm:text-lg">Pay via UPI</CardTitle>
+                  </div>
                 </CardHeader>
-                <CardContent className="space-y-6">
-                  {/* Amount */}
-                  <div className="text-center">
-                    <p className="text-sm text-gray-600 mb-1">Total Amount</p>
-                    <p className="text-4xl font-bold text-gray-900">₹{totalAmount.toFixed(2)}</p>
+                <CardContent className="space-y-5">
+                  <div className="text-center py-2">
+                    <p className="text-sm text-gray-500 mb-1">Total Amount</p>
+                    <p className="text-3xl sm:text-4xl font-bold text-gray-900">₹{totalAmount.toFixed(2)}</p>
                   </div>
 
-                  {/* UPI Details */}
-                  <div className="bg-green-50 border border-green-200 rounded-xl p-4 space-y-3">
+                  <div className="bg-green-50 border border-green-200 rounded-xl p-4 space-y-4">
                     {upiConfig?.qr_code_url && (
                       <div className="flex justify-center">
-                        <img
-                          src={upiConfig.qr_code_url}
-                          alt="UPI QR Code"
-                          className="w-48 h-48 object-contain"
-                        />
+                        <img src={upiConfig.qr_code_url} alt="UPI QR Code" className="w-40 sm:w-48 h-40 sm:h-48 object-contain" />
                       </div>
                     )}
-                    <div className="space-y-2 text-sm">
+                    <div className="space-y-2 text-xs sm:text-sm bg-white rounded-lg p-3">
                       <div className="flex justify-between">
-                        <span className="text-gray-600">UPI ID:</span>
-                        <span className="font-mono font-medium text-gray-900">{upiConfig?.upi_id || 'sunlightcases@upi'}</span>
+                        <span className="text-gray-500">UPI ID:</span>
+                        <span className="font-mono font-semibold text-gray-900">{upiConfig?.upi_id || 'sunlightcases@upi'}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Phone:</span>
-                        <span className="font-mono font-medium text-gray-900">{upiConfig?.phone || '+919999999999'}</span>
+                        <span className="text-gray-500">Phone:</span>
+                        <span className="font-mono font-semibold text-gray-900">{upiConfig?.phone || '+919999999999'}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Merchant:</span>
-                        <span className="font-medium text-gray-900">{upiConfig?.merchant_name || 'Sunlight Cases'}</span>
+                        <span className="text-gray-500">Merchant:</span>
+                        <span className="font-semibold text-gray-900">{upiConfig?.merchant_name || 'Sunlight Cases'}</span>
                       </div>
                     </div>
                   </div>
 
                   <p className="text-sm text-gray-500 text-center">
-                    Open your UPI app (Google Pay, PhonePe, PayTM, etc.) and make a payment of{' '}
-                    <strong>₹{totalAmount.toFixed(2)}</strong> to the UPI ID or scan the QR code above.
+                    Open your UPI app and pay <strong>₹{totalAmount.toFixed(2)}</strong> to the ID above or scan the QR code.
                   </p>
 
-                  <hr />
+                  <hr className="border-gray-200" />
 
-                  {/* Transaction ID */}
                   <div>
-                    <Label htmlFor="txn_id">UPI Transaction / Reference ID *</Label>
-                    <Input
-                      id="txn_id"
-                      value={upiTransactionId}
-                      onChange={(e) => setUpiTransactionId(e.target.value)}
-                      placeholder="Enter the transaction ID from your UPI app"
-                      required
-                      className="h-11 mt-1"
-                    />
+                    <Label htmlFor="txn_id" className="text-sm">UPI Transaction ID *</Label>
+                    <Input id="txn_id" value={upiTransactionId} onChange={(e) => setUpiTransactionId(e.target.value)}
+                      placeholder="Enter transaction ID from your UPI app" required className="h-11 mt-1" />
                   </div>
 
-                  {/* Screenshot */}
                   <div>
-                    <Label htmlFor="screenshot">Payment Screenshot (optional)</Label>
-                    <input
-                      id="screenshot"
-                      type="file"
-                      accept="image/jpeg,image/jpg,image/png,image/webp"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          setPaymentScreenshot(file);
-                          handleScreenshotUpload(file);
-                        }
-                      }}
-                      className="mt-1 block w-full text-sm text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
-                    />
-                    {screenshotUploading && <p className="text-sm text-gray-500 mt-1">Uploading...</p>}
-                    {screenshotUrl && <p className="text-sm text-green-600 mt-1">✓ Screenshot uploaded</p>}
+                    <Label htmlFor="screenshot" className="text-sm">Payment Screenshot (recommended)</Label>
+                    <div className="mt-1 flex items-center gap-3">
+                      <label className="flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors text-sm text-gray-600">
+                        <input id="screenshot" type="file" accept="image/jpeg,image/jpg,image/png,image/webp"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) { setPaymentScreenshot(file); handleScreenshotUpload(file); }
+                          }}
+                          className="hidden" />
+                        {screenshotUploading ? 'Uploading...' : 'Choose File'}
+                      </label>
+                      {screenshotUrl && <span className="flex items-center gap-1 text-sm text-green-600"><Check className="w-4 h-4" /> Uploaded</span>}
+                    </div>
                   </div>
                 </CardContent>
               </Card>
 
               <div className="flex gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setStep('info')}
-                  className="w-1/3 h-12"
-                >
-                  ← Back
-                </Button>
-                <Button
-                  type="button"
-                  onClick={() => {
-                    if (!upiTransactionId) {
-                      setError('Please enter the UPI transaction ID');
-                      return;
-                    }
-                    setError('');
-                    setStep('confirm');
-                  }}
-                  className="flex-1 h-12 text-base"
-                >
-                  Continue to Review
+                <Button type="button" variant="outline" onClick={() => setStep('info')} className="w-1/3 h-12">← Back</Button>
+                <Button type="button" onClick={() => {
+                  if (!upiTransactionId) { setError('Please enter the UPI transaction ID'); return; }
+                  setError(''); setStep('confirm');
+                }} className="flex-1 h-12 text-base gap-2">
+                  Review Order <ChevronRight className="w-4 h-4" />
                 </Button>
               </div>
             </>
           )}
 
-          {/* STEP 3: Confirmation */}
+          {/* STEP 3: Review */}
           {step === 'confirm' && (
             <>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Review Your Order</CardTitle>
+              <Card className="border-0 shadow-sm">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base sm:text-lg">Review Your Order</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div>
-                    <h3 className="font-semibold text-gray-900 mb-2">Customer</h3>
-                    <div className="text-sm text-gray-700 space-y-1 bg-gray-50 rounded-lg p-3">
+                  <div className="bg-gray-50 rounded-lg p-3 sm:p-4 space-y-3">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                      <User className="w-4 h-4 text-green-600" /> Customer Details
+                    </div>
+                    <div className="text-xs sm:text-sm text-gray-700 space-y-1 pl-6">
                       <p><span className="font-medium">Name:</span> {customerName}</p>
                       <p><span className="font-medium">Phone:</span> {customerPhone}</p>
                       {customerEmail && <p><span className="font-medium">Email:</span> {customerEmail}</p>}
                     </div>
                   </div>
 
-                  <div>
-                    <h3 className="font-semibold text-gray-900 mb-2">Shipping Address</h3>
-                    <div className="text-sm text-gray-700 space-y-1 bg-gray-50 rounded-lg p-3">
+                  <div className="bg-gray-50 rounded-lg p-3 sm:p-4 space-y-3">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                      <MapPin className="w-4 h-4 text-green-600" /> Shipping Address
+                    </div>
+                    <div className="text-xs sm:text-sm text-gray-700 space-y-1 pl-6">
                       <p>{shippingAddress.street}</p>
                       <p>{shippingAddress.city}, {shippingAddress.state} {shippingAddress.postal_code}</p>
                       <p>{shippingAddress.country}</p>
@@ -459,47 +399,41 @@ export default function CheckoutPage() {
                   </div>
 
                   {deliveryLocation && (
-                    <div>
-                      <h3 className="font-semibold text-gray-900 mb-2">Drop Location</h3>
-                      <div className="text-sm text-gray-700 space-y-1 bg-gray-50 rounded-lg p-3">
+                    <div className="bg-gray-50 rounded-lg p-3 sm:p-4 space-y-3">
+                      <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                        <MapPin className="w-4 h-4 text-green-600" /> Drop Location
+                      </div>
+                      <div className="text-xs sm:text-sm text-gray-700 pl-6">
                         <p className="line-clamp-2">{deliveryLocation.address}</p>
-                        <p className="text-xs text-gray-500 mt-1">
-                          {deliveryLocation.lat.toFixed(6)}, {deliveryLocation.lng.toFixed(6)}
-                        </p>
                       </div>
                     </div>
                   )}
 
-                  <div>
-                    <h3 className="font-semibold text-gray-900 mb-2">Payment</h3>
-                    <div className="text-sm text-gray-700 space-y-1 bg-gray-50 rounded-lg p-3">
+                  <div className="bg-gray-50 rounded-lg p-3 sm:p-4 space-y-3">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                      <CreditCard className="w-4 h-4 text-green-600" /> Payment
+                    </div>
+                    <div className="text-xs sm:text-sm text-gray-700 space-y-1 pl-6">
                       <p><span className="font-medium">Method:</span> UPI</p>
                       <p><span className="font-medium">Transaction ID:</span> {upiTransactionId}</p>
                       {screenshotUrl && <p><span className="font-medium">Screenshot:</span> ✓ Attached</p>}
-                      <p className="text-lg font-bold text-gray-900 mt-2">Total: ₹{totalAmount.toFixed(2)}</p>
                     </div>
                   </div>
 
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm text-yellow-800">
+                  <div className="flex justify-between items-center bg-green-50 border border-green-200 rounded-lg p-3 sm:p-4">
+                    <span className="font-semibold text-gray-900 text-sm">Total Amount</span>
+                    <span className="text-xl sm:text-2xl font-bold text-green-700">₹{totalAmount.toFixed(2)}</span>
+                  </div>
+
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-xs sm:text-sm text-yellow-800">
                     Your order will be placed with <strong>Pending Payment Verification</strong> status. We will verify your payment and update the status once confirmed.
                   </div>
                 </CardContent>
               </Card>
 
               <div className="flex gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setStep('payment')}
-                  className="w-1/3 h-12"
-                >
-                  ← Back
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={loading}
-                  className="flex-1 h-12 text-base"
-                >
+                <Button type="button" variant="outline" onClick={() => setStep('payment')} className="w-1/3 h-12">← Back</Button>
+                <Button type="submit" disabled={loading} className="flex-1 h-12 text-base">
                   {loading ? 'Processing...' : "I've Paid — Place Order"}
                 </Button>
               </div>

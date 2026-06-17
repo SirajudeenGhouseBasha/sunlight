@@ -4,8 +4,8 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { createClient } from '@/src/lib/supabase/server'
 import { ProductActions } from '@/src/components/products/ProductActions'
+import { ChevronRight, Star, ShieldCheck, Truck, RotateCcw } from 'lucide-react'
 
-// Force dynamic rendering
 export const dynamic = 'force-dynamic'
 
 export interface PredesignedProductPageProps {
@@ -31,31 +31,16 @@ async function getPredesignedProduct(id: string) {
       design_image_url,
       variant_image_url,
       additional_image_urls,
-      brand:brands!inner (
-        id,
-        name
-      ),
-      model:models!inner (
-        id,
-        name
-      ),
-      product_type:product_types!inner (
-        id,
-        name,
-        base_price,
-        description,
-        material_properties
-      )
+      brand:brands!inner (id, name),
+      model:models!inner (id, name),
+      product_type:product_types!inner (id, name, base_price, description, material_properties)
     `)
     .eq('id', id)
     .eq('is_active', true)
     .single()
 
-  if (error || !data) {
-    return null
-  }
+  if (error || !data) return null
 
-  // Extract single objects from arrays (Supabase returns arrays for joins)
   const brand = Array.isArray(data.brand) ? data.brand[0] : data.brand
   const model = Array.isArray(data.model) ? data.model[0] : data.model
   const productType = Array.isArray(data.product_type) ? data.product_type[0] : data.product_type
@@ -84,144 +69,227 @@ async function getPredesignedProduct(id: string) {
 async function PredesignedProductDetails({ id }: { id: string }) {
   const product = await getPredesignedProduct(id)
   
-  if (!product) {
-    notFound()
-  }
+  if (!product) notFound()
+
+  const brandName = product.brand?.name
+  const modelName = product.model?.name
+  const productTypeName = product.product_type?.name
+  const totalPrice = product.price
+  const mrp = totalPrice * 1.2
+  const discountPercent = Math.round(((mrp - totalPrice) / mrp) * 100)
+  const allImages = [product.image_url, ...(product.additional_images || [])].filter(Boolean)
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-      {/* Product Images */}
-      <div className="space-y-4">
-        <div className="relative aspect-square overflow-hidden rounded-2xl bg-gray-50 border border-gray-100">
-          {product.image_url ? (
-            <Image
-              src={product.image_url}
-              alt={product.name}
-              fill
-              className="object-cover"
-              priority
-              sizes="(max-width: 768px) 100vw, 50vw"
-            />
-          ) : (
-            <div className="flex items-center justify-center h-full text-gray-400 text-sm">
-              No image available
-            </div>
-          )}
-        </div>
+    <>
+      {/* Breadcrumb */}
+      <nav className="flex items-center gap-1.5 text-xs sm:text-sm text-gray-500 mb-4 sm:mb-6 overflow-x-auto whitespace-nowrap pb-1">
+        <Link href="/" className="hover:text-orange-600 transition-colors">Home</Link>
+        <ChevronRight className="w-3 h-3 shrink-0" />
+        <Link href="/predesigned" className="hover:text-orange-600 transition-colors">Predesigned</Link>
+        {brandName && (
+          <>
+            <ChevronRight className="w-3 h-3 shrink-0" />
+            <span className="text-gray-400 truncate max-w-[120px]">{product.name}</span>
+          </>
+        )}
+      </nav>
 
-        {/* Additional images */}
-        {product.additional_images && product.additional_images.length > 0 && (
-          <div className="flex gap-2 overflow-x-auto pb-1">
-            {product.additional_images.map((imgUrl: string, i: number) => (
-              <div
-                key={i}
-                className="relative flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border border-gray-200 bg-gray-50"
-              >
-                <Image
-                  src={imgUrl}
-                  alt={`${product.name} view ${i + 2}`}
-                  fill
-                  className="object-cover"
-                  sizes="80px"
-                />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8">
+        {/* Images */}
+        <div className="space-y-3 sm:space-y-4">
+          <div className="relative aspect-square overflow-hidden rounded-xl sm:rounded-2xl bg-gray-50 border border-gray-100 group">
+            {product.image_url ? (
+              <Image
+                src={product.image_url}
+                alt={product.name}
+                fill
+                className="object-cover group-hover:scale-105 transition-transform duration-500"
+                priority
+                sizes="(max-width: 768px) 100vw, 50vw"
+              />
+            ) : (
+              <div className="flex items-center justify-center h-full text-gray-400 text-sm">
+                No image available
               </div>
-            ))}
+            )}
+            {discountPercent > 0 && (
+              <span className="absolute top-3 left-3 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-md">
+                -{discountPercent}%
+              </span>
+            )}
+            {product.is_featured && (
+              <span className="absolute top-3 right-3 bg-orange-500 text-white text-xs font-bold px-2 py-1 rounded-md">
+                Featured
+              </span>
+            )}
           </div>
-        )}
-      </div>
-      
-      {/* Product Info */}
-      <div className="space-y-6">
-        {/* Title + price */}
-        <div>
-          {product.brand && product.model && (
-            <p className="text-sm text-gray-500 mb-1">
-              {product.brand.name} · {product.model.name}
-            </p>
-          )}
-          <h1 className="text-3xl font-bold text-gray-900">{product.name}</h1>
-          <div className="flex items-baseline gap-3 mt-3">
-            <span className="text-3xl font-bold text-green-600">
-              ${typeof product.price === 'number' ? product.price.toFixed(2) : product.price}
-            </span>
-          </div>
-        </div>
 
-        {/* Stock badge */}
-        <div>
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium bg-green-50 text-green-700 border border-green-200">
-            <span className="w-2 h-2 rounded-full bg-green-500" />
-            In Stock
-          </span>
-          {product.is_featured && (
-            <span className="ml-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium bg-orange-50 text-orange-700 border border-orange-200">
-              ⭐ Featured
-            </span>
-          )}
-        </div>
-
-        {/* Description */}
-        {product.description && (
-          <div>
-            <h3 className="text-base font-semibold text-gray-900 mb-2">Description</h3>
-            <p className="text-gray-600 text-sm leading-relaxed">{product.description}</p>
-          </div>
-        )}
-
-        {/* Color */}
-        {product.color_name && (
-          <div>
-            <h3 className="text-base font-semibold text-gray-900 mb-2">Color</h3>
-            <div className="flex items-center gap-2">
-              {product.color_hex && (
+          {allImages.length > 1 && (
+            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+              {allImages.map((imgUrl: string, i: number) => (
                 <div
-                  className="w-6 h-6 rounded-full border-2 border-white shadow-sm ring-1 ring-gray-200"
-                  style={{ backgroundColor: product.color_hex }}
-                  aria-label={product.color_hex}
-                />
+                  key={i}
+                  className={`relative flex-shrink-0 w-14 h-14 sm:w-16 sm:h-16 rounded-lg overflow-hidden border-2 transition-colors ${
+                    i === 0 ? 'border-orange-500' : 'border-gray-200 hover:border-gray-400'
+                  } bg-gray-50 cursor-pointer`}
+                >
+                  <Image src={imgUrl} alt={`${product.name} view ${i + 1}`} fill className="object-cover" sizes="64px" />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Product Info */}
+        <div className="space-y-4 sm:space-y-5">
+          <div>
+            {brandName && (
+              <p className="text-xs sm:text-sm font-medium text-orange-600 uppercase tracking-wider mb-1">
+                {brandName}
+              </p>
+            )}
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 leading-tight">
+              {product.name}
+            </h1>
+            {modelName && (
+              <p className="text-sm text-gray-500 mt-1">Compatible with {modelName}</p>
+            )}
+          </div>
+
+          {/* Ratings */}
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 bg-green-700 text-white text-xs font-semibold px-2 py-0.5 rounded">
+              <span>4.5</span>
+              <Star className="w-3 h-3 fill-white" />
+            </div>
+            <span className="text-xs sm:text-sm text-gray-500">86 Ratings & 28 Reviews</span>
+          </div>
+
+          {/* Price */}
+          <div className="bg-gray-50 rounded-xl p-3 sm:p-4 space-y-1.5">
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl sm:text-3xl font-bold text-gray-900">
+                ₹{typeof totalPrice === 'number' ? totalPrice.toFixed(2) : totalPrice}
+              </span>
+              {mrp > totalPrice && (
+                <>
+                  <span className="text-base sm:text-lg text-gray-400 line-through">₹{mrp.toFixed(2)}</span>
+                  <span className="text-sm font-semibold text-green-600">{discountPercent}% off</span>
+                </>
               )}
-              <span className="text-sm text-gray-700">{product.color_name}</span>
+            </div>
+            <p className="text-xs text-gray-500">Inclusive of all taxes</p>
+          </div>
+
+          {/* Stock */}
+          <div>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs sm:text-sm font-medium bg-green-50 text-green-700 border border-green-200">
+              <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-green-500" />
+              In Stock
+            </span>
+          </div>
+
+          {/* Color */}
+          {product.color_name && (
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium text-gray-700">Color:</span>
+              <div className="flex items-center gap-2">
+                {product.color_hex && (
+                  <div
+                    className="w-7 h-7 sm:w-8 sm:h-8 rounded-full border-2 border-white shadow-sm ring-2 ring-orange-500 cursor-pointer"
+                    style={{ backgroundColor: product.color_hex }}
+                  />
+                )}
+                <span className="text-sm text-gray-900 font-medium">{product.color_name}</span>
+              </div>
+            </div>
+          )}
+
+          {/* Highlights */}
+          <div>
+            <h3 className="text-sm font-semibold text-gray-900 mb-2">Highlights</h3>
+            <ul className="space-y-1.5">
+              {[
+                `Premium print quality for ${modelName || 'your device'}`,
+                `${productTypeName || 'Premium'} material with durable finish`,
+                'Scratch-resistant and shock-absorbent',
+                'Vibrant colors that won\'t fade',
+                'Tailored fit with easy access to all ports',
+              ].map((item, i) => (
+                <li key={i} className="flex items-start gap-2 text-xs sm:text-sm text-gray-600">
+                  <span className="text-green-600 mt-0.5 shrink-0">✓</span>
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Description */}
+          {product.description && (
+            <div>
+              <h3 className="text-sm font-semibold text-gray-900 mb-1.5">Description</h3>
+              <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">{product.description}</p>
+            </div>
+          )}
+
+          {/* Seller Services */}
+          <div className="flex items-center gap-4 text-xs sm:text-sm text-gray-600">
+            <div className="flex items-center gap-1.5">
+              <ShieldCheck className="w-4 h-4 text-green-600" />
+              <span>1 Year Warranty</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Truck className="w-4 h-4 text-green-600" />
+              <span>Free Delivery</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <RotateCcw className="w-4 h-4 text-green-600" />
+              <span>7 Days Return</span>
             </div>
           </div>
-        )}
 
-        {/* Add to cart */}
-        <ProductActions 
-          variantId={id} 
-          designId={id}
-          isPredesigned={true}
-        />
+          {/* Add to cart */}
+          <div className="pt-2">
+            <ProductActions variantId={id} designId={id} isPredesigned={true} />
+          </div>
 
-        {/* Product details table */}
-        <div className="border-t pt-6">
-          <h3 className="text-base font-semibold text-gray-900 mb-4">Product Details</h3>
-          <dl className="space-y-3">
-            {product.product_type && (
-              <div className="flex justify-between text-sm">
-                <dt className="text-gray-500">Type</dt>
-                <dd className="font-medium text-gray-900">{product.product_type.name}</dd>
+          {/* Product Details */}
+          <div className="border-t border-gray-200 pt-4 sm:pt-5">
+            <h3 className="text-sm font-semibold text-gray-900 mb-3">Product Details</h3>
+            <dl className="space-y-2.5">
+              {productTypeName && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs sm:text-sm">
+                  <dt className="text-gray-500">Type</dt>
+                  <dd className="font-medium text-gray-900 sm:col-span-2">{productTypeName}</dd>
+                </div>
+              )}
+              {modelName && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs sm:text-sm">
+                  <dt className="text-gray-500">Compatible Model</dt>
+                  <dd className="font-medium text-gray-900 sm:col-span-2">{modelName}</dd>
+                </div>
+              )}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs sm:text-sm">
+                <dt className="text-gray-500">Availability</dt>
+                <dd className="font-medium text-green-700 sm:col-span-2">In Stock</dd>
               </div>
-            )}
-            {product.brand && (
-              <div className="flex justify-between text-sm">
-                <dt className="text-gray-500">Brand</dt>
-                <dd className="font-medium text-gray-900">{product.brand.name}</dd>
-              </div>
-            )}
-            {product.model && (
-              <div className="flex justify-between text-sm">
-                <dt className="text-gray-500">Compatible With</dt>
-                <dd className="font-medium text-gray-900">{product.model.name}</dd>
-              </div>
-            )}
-            <div className="flex justify-between text-sm">
-              <dt className="text-gray-500">Availability</dt>
-              <dd className="font-medium text-green-700">In Stock</dd>
-            </div>
-          </dl>
+            </dl>
+          </div>
         </div>
       </div>
-    </div>
+
+      {/* Mobile Sticky Bar */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 p-3 lg:hidden">
+        <div className="flex items-center justify-between max-w-lg mx-auto">
+          <div>
+            <p className="text-lg font-bold text-gray-900">₹{typeof totalPrice === 'number' ? totalPrice.toFixed(2) : totalPrice}</p>
+            {mrp > totalPrice && <p className="text-xs text-gray-500 line-through">₹{mrp.toFixed(2)}</p>}
+          </div>
+          <ProductActions variantId={id} designId={id} isPredesigned={true} />
+        </div>
+      </div>
+      <div className="h-20 lg:hidden" />
+    </>
   )
 }
 
@@ -229,29 +297,25 @@ export default async function PredesignedProductPage({ params }: PredesignedProd
   const { id } = await params
   
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-6">
-        <Link href="/predesigned" className="text-orange-600 hover:text-orange-700 text-sm font-medium">
-          ← Back to Predesigned Cases
-        </Link>
-      </div>
-      
-      <Suspense fallback={
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <div className="aspect-square bg-gray-200 rounded-2xl animate-pulse" />
-          <div className="space-y-4">
-            <div className="h-4 bg-gray-200 rounded w-32 animate-pulse" />
-            <div className="h-8 bg-gray-200 rounded animate-pulse" />
-            <div className="h-8 bg-gray-200 rounded w-24 animate-pulse" />
-            <div className="h-6 bg-gray-200 rounded w-28 animate-pulse" />
-            <div className="h-4 bg-gray-200 rounded animate-pulse" />
-            <div className="h-4 bg-gray-200 rounded w-3/4 animate-pulse" />
-            <div className="h-12 bg-gray-200 rounded animate-pulse" />
+    <div className="min-h-screen bg-white">
+      <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-8">
+        <Suspense fallback={
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="aspect-square bg-gray-200 rounded-2xl animate-pulse" />
+            <div className="space-y-4">
+              <div className="h-4 bg-gray-200 rounded w-32 animate-pulse" />
+              <div className="h-8 bg-gray-200 rounded animate-pulse" />
+              <div className="h-8 bg-gray-200 rounded w-24 animate-pulse" />
+              <div className="h-6 bg-gray-200 rounded w-28 animate-pulse" />
+              <div className="h-4 bg-gray-200 rounded animate-pulse" />
+              <div className="h-4 bg-gray-200 rounded w-3/4 animate-pulse" />
+              <div className="h-12 bg-gray-200 rounded animate-pulse" />
+            </div>
           </div>
-        </div>
-      }>
-        <PredesignedProductDetails id={id} />
-      </Suspense>
+        }>
+          <PredesignedProductDetails id={id} />
+        </Suspense>
+      </div>
     </div>
   )
 }

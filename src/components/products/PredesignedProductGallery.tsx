@@ -162,7 +162,7 @@ function ProductCard({ product }: { product: PredesignedProduct }) {
         {/* Price + CTA */}
         <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
           <span style={{ fontSize: 18, fontWeight: 800, color: '#111' }}>
-            ${price.toFixed(2)}
+            ₹{price.toFixed(2)}
           </span>
           <button
             onClick={() => mutation.mutate()}
