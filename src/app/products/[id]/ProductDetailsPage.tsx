@@ -173,7 +173,7 @@ async function ProductDetails({ id, isCustomizing }: { id: string; isCustomizing
         <nav className="flex items-center gap-1.5 text-xs sm:text-sm text-gray-500 mb-4 sm:mb-6 overflow-x-auto whitespace-nowrap pb-1">
           <Link href="/" className="hover:text-orange-600 transition-colors">Home</Link>
           <ChevronRight className="w-3 h-3 shrink-0" />
-          <Link href="/products" className="hover:text-orange-600 transition-colors">Cases</Link>
+          <Link href="/predesigned" className="hover:text-orange-600 transition-colors">Cases</Link>
           {brandName && (
             <>
               <ChevronRight className="w-3 h-3 shrink-0" />
@@ -449,7 +449,7 @@ async function ProductDetails({ id, isCustomizing }: { id: string; isCustomizing
             </p>
           </div>
           <div className="mt-4">
-            <Link href="/products" className="text-blue-600 hover:text-blue-800 underline">
+            <Link href="/predesigned" className="text-blue-600 hover:text-blue-800 underline">
               ← Back to Products
             </Link>
           </div>
@@ -523,7 +523,7 @@ async function RelatedProducts({ productId }: { productId: string }) {
       <div className="mt-12 sm:mt-16">
         <div className="flex items-center justify-between mb-4 sm:mb-6">
           <h2 className="text-lg sm:text-2xl font-bold text-gray-900">Related Products</h2>
-          <Link href="/products" className="text-sm text-orange-600 hover:text-orange-700 font-medium">
+          <Link href="/predesigned" className="text-sm text-orange-600 hover:text-orange-700 font-medium">
             View All →
           </Link>
         </div>

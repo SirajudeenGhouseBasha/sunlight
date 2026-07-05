@@ -458,6 +458,10 @@ export function HomePageClientAdvanced({
   const { addToCart } = useCart();
   const [heroVisible, setHeroVisible] = useState<boolean>(false);
   const [mousePos, setMousePos] = useState<{ x: number; y: number }>({ x: 50, y: 50 });
+  const [showAllTypes, setShowAllTypes] = useState(false);
+  const INITIAL_TYPE_COUNT = 6;
+  const visibleTypes = showAllTypes ? productTypes : productTypes.slice(0, INITIAL_TYPE_COUNT);
+  const hasMoreTypes = productTypes.length > INITIAL_TYPE_COUNT;
 
   useEffect(() => {
     const t = setTimeout(() => setHeroVisible(true), 100);
@@ -521,6 +525,13 @@ export function HomePageClientAdvanced({
             backgroundSize: 'cover' !important;
           }
         }
+
+        @media (max-width: 640px) {
+          .home-grid { grid-template-columns: repeat(2, 1fr) !important; }
+          .home-grid-shop-type { grid-template-columns: repeat(2, 1fr) !important; }
+          .home-grid-stats { grid-template-columns: repeat(2, 1fr) !important; }
+          .home-grid-footer { grid-template-columns: repeat(2, 1fr) !important; gap: 32px !important; }
+        }
       `}</style>
 
       <Toaster position="bottom-right" />
@@ -582,7 +593,7 @@ export function HomePageClientAdvanced({
         borderBottom: '1px solid rgba(0,0,0,0.05)',
       }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 'clamp(20px, 4vw, 32px)' }}>
+          <div className="home-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 'clamp(20px, 4vw, 32px)' }}>
             {/* Predesigned Cases Card */}
             <motion.div
               initial={{ opacity: 0, y: 40 }}
@@ -727,15 +738,15 @@ export function HomePageClientAdvanced({
               </h2>
             </motion.div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 'clamp(16px, 3vw, 24px)' }}>
-              {productTypes.map((type, i) => (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 'clamp(16px, 3vw, 24px)' }} className="home-grid-shop-type">
+              {visibleTypes.map((type, i) => (
                 <motion.div
                   key={type.id}
                   initial={{ opacity: 0, y: 40 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6, delay: i * 0.1 }}
                 >
-                  <Link href={`/products?type=${type.slug}`} style={{ textDecoration: 'none' }}>
+                  <Link href={`/predesigned?type=${type.slug}`} style={{ textDecoration: 'none' }}>
                     <div
                       style={{
                         padding: 'clamp(24px, 4vw, 32px)',
@@ -769,6 +780,39 @@ export function HomePageClientAdvanced({
                 </motion.div>
               ))}
             </div>
+
+            {hasMoreTypes && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                whileInView={{ opacity: 1 }}
+                style={{ textAlign: 'center', marginTop: 'clamp(24px, 4vw, 32px)' }}
+              >
+                <button
+                  onClick={() => setShowAllTypes(!showAllTypes)}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '12px 28px',
+                    borderRadius: '8px',
+                    border: '2px solid #000',
+                    background: 'transparent',
+                    color: '#000',
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = '#000'; e.currentTarget.style.color = '#fff'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#000'; }}
+                >
+                  {showAllTypes ? 'Show Less' : `Show All ${productTypes.length} Types`}
+                  <svg className={`w-4 h-4 transition-transform ${showAllTypes ? 'rotate-180' : ''}`} style={{ transform: showAllTypes ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+              </motion.div>
+            )}
           </div>
         </section>
       )}
@@ -792,7 +836,7 @@ export function HomePageClientAdvanced({
           </h2>
         </motion.div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 20, marginBottom: 48 }}>
+        <div className="home-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 20, marginBottom: 48 }}>
           {featuredProducts.slice(0, 8).map((product, i) => (
             <ProductCard
               key={product.id}
@@ -804,7 +848,7 @@ export function HomePageClientAdvanced({
         </div>
 
         <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} style={{ textAlign: 'center', marginBottom: 60 }}>
-          <Link href="/products">
+          <Link href="/predesigned">
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
@@ -895,7 +939,7 @@ export function HomePageClientAdvanced({
         borderBottom: '1px solid rgba(0,0,0,0.05)',
       }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 'clamp(16px, 3vw, 20px)' }}>
+          <div className="home-grid-stats" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 'clamp(16px, 3vw, 20px)' }}>
             <StatCard value={50000} suffix="+" label="Cases Sold" delay={0} />
             <StatCard value={98} suffix="%" label="Happy Customers" delay={0.1} />
             <StatCard value={200} suffix="+" label="Phone Models" delay={0.2} />
@@ -926,7 +970,7 @@ export function HomePageClientAdvanced({
             </h2>
           </motion.div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
+          <div className="home-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
             <AnimatedTestimonial
               quote="The quality is insane. Felt premium the moment I unboxed it. Highly recommend!"
               author="Sarah Chen"
@@ -973,7 +1017,7 @@ export function HomePageClientAdvanced({
             </p>
           </motion.div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 'clamp(16px, 3vw, 24px)' }}>
+          <div className="home-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 'clamp(16px, 3vw, 24px)' }}>
             {[
               { step: '1', title: 'Choose Model', desc: 'Select your phone model from our extensive catalog' },
               { step: '2', title: 'Pick Design', desc: 'Browse predesigned or upload your own artwork' },
@@ -1135,6 +1179,7 @@ export function HomePageClientAdvanced({
       >
         <div style={{ maxWidth: '1280px', margin: '0 auto' }}>
           <div
+            className="home-grid-footer"
             style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(4, 1fr)',

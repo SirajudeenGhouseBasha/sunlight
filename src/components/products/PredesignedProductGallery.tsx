@@ -224,15 +224,36 @@ export function PredesignedProductGallery({ featuredOnly = false, limit = 20, sh
 
   if (products.length === 0) {
     return (
-      <div style={{ padding: 40, textAlign: 'center', color: '#9ca3af', fontSize: 14 }}>
-        No predesigned products available yet.
+      <div style={{ padding: 40, textAlign: 'center' }}>
+        <div style={{ fontSize: 48, marginBottom: 16, opacity: 0.3 }}>📱</div>
+        <p style={{ color: '#9ca3af', fontSize: 14, marginBottom: 20 }}>
+          {featuredOnly
+            ? 'No featured designs available right now.'
+            : 'No predesigned products available yet.'}
+        </p>
+        {showViewAll && (
+          <Link href="/predesigned" style={{
+            display: 'inline-block',
+            padding: '10px 28px', borderRadius: 8,
+            border: '2px solid #000', color: '#000',
+            fontSize: 14, fontWeight: 600, textDecoration: 'none',
+            transition: 'all 0.2s',
+          }}>
+            Browse All Designs →
+          </Link>
+        )}
       </div>
     );
   }
 
   return (
     <div>
-      <div style={{
+      <style>{`
+        @media (max-width: 640px) {
+          .gallery-grid { grid-template-columns: repeat(2, 1fr) !important; }
+        }
+      `}</style>
+      <div className="gallery-grid" style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
         gap: 20,

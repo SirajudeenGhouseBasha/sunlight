@@ -1,31 +1,15 @@
-import { getCategoriesForPage, ProductsPageProps } from './ProductsListPage'
+import { redirect } from 'next/navigation'
 
-export const revalidate = 300 // Revalidate every 5 minutes
-
-export { default } from './ProductsListPage'
-
-// Generate static params for popular categories
-export async function generateStaticParams() {
-  try {
-    const categories = await getCategoriesForPage()
-    
-    return categories.slice(0, 5).map((category: { slug: string }) => ({
-      category: category.slug,
-    }))
-  } catch (error) {
-    console.error('Failed to generate static params:', error)
-    return []
+export default async function ProductsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}) {
+  const params = await searchParams
+  const qs = new URLSearchParams()
+  for (const [key, value] of Object.entries(params)) {
+    if (value) qs.set(key, Array.isArray(value) ? value[0] : value)
   }
+  const q = qs.toString()
+  redirect(`/predesigned${q ? `?${q}` : ''}`)
 }
-
-// Metadata for SEO
-export async function generateMetadata({ searchParams }: ProductsPageProps) {
-  const { category } = await searchParams
-  
-  return {
-    title: category ? `${category} Phone Cases | Sunlight` : 'Phone Cases | Sunlight',
-    description: category 
-      ? `Shop our collection of ${category} phone cases with premium quality and design.`
-      : 'Shop our complete collection of phone cases for all devices with premium quality and design.',
-  }
-}

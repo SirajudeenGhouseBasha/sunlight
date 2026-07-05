@@ -56,7 +56,7 @@ export default async function DashboardPage() {
                 </Button>
               </Link>
               <div className="grid grid-cols-2 gap-3">
-                <Link href="/products">
+                <Link href="/predesigned">
                   <Button variant="outline" className="w-full h-11 text-xs sm:text-sm gap-2">
                     <Smartphone className="w-4 h-4" />
                     Browse Cases
@@ -91,7 +91,7 @@ export default async function DashboardPage() {
                     <Package className="w-6 h-6 sm:w-7 sm:h-7 text-gray-400" />
                   </div>
                   <p className="text-sm text-gray-500 mb-4">No orders yet</p>
-                  <Link href="/products">
+                  <Link href="/predesigned">
                     <Button variant="outline" className="h-10 text-xs sm:text-sm">Start Shopping</Button>
                   </Link>
                 </div>

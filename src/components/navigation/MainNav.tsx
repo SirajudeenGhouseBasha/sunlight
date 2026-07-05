@@ -15,7 +15,7 @@ export function MainNav() {
   useEffect(() => {
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
-      
+
       if (currentScrollY > lastScrollY && currentScrollY > 100) {
         // Scrolling down - hide navbar
         setIsVisible(false);
@@ -23,7 +23,7 @@ export function MainNav() {
         // Scrolling up - show navbar
         setIsVisible(true);
       }
-      
+
       setLastScrollY(currentScrollY);
     };
 
@@ -31,15 +31,23 @@ export function MainNav() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, [lastScrollY]);
 
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [mobileMenuOpen]);
+
   const handleSignOut = async () => {
     await signOut();
     setMobileMenuOpen(false);
   };
 
   const navLinks = [
-    { href: '/predesigned', label: 'Predesigned', highlight: true },
+    { href: '/predesigned', label: 'Catalog', highlight: true },
     { href: '/custom-case', label: 'Custom', highlight: true },
-    { href: '/products', label: 'Browse' },
     { href: '/cart', label: 'Cart' },
     { href: '/orders', label: 'Orders' },
     { href: '/dashboard/designs', label: 'Designs', auth: true },
@@ -300,37 +308,48 @@ export function MainNav() {
           stroke-width: 2;
         }
 
+        /* Mobile Overlay */
+        .mobile-overlay {
+          display: none;
+          position: fixed;
+          inset: 0;
+          background: rgba(0, 0, 0, 0.4);
+          backdrop-filter: blur(2px);
+          z-index: 48;
+          opacity: 0;
+          transition: opacity 0.3s ease;
+        }
+
+        .mobile-overlay.open {
+          display: block;
+          opacity: 1;
+        }
+
         /* Mobile Menu */
         .mobile-menu {
           display: none;
           position: fixed;
-          top: 5.5rem;
-          left: 1.5rem;
-          right: 1.5rem;
+          top: 5rem;
+          left: 1rem;
+          right: 1rem;
           background: #ff6b35;
           border: none;
           border-radius: 16px;
           backdrop-filter: blur(12px);
           overflow: hidden;
           z-index: 49;
-          max-width: calc(100% - 3rem);
-          box-shadow: 0 4px 20px rgba(255, 107, 53, 0.2);
+          box-shadow: 0 8px 32px rgba(255, 107, 53, 0.3);
+          opacity: 0;
+          transform: translateY(-12px) scale(0.98);
+          transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+          pointer-events: none;
         }
 
         .mobile-menu.open {
           display: block;
-          animation: slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-
-        @keyframes slideDown {
-          from {
-            opacity: 0;
-            transform: translateY(-12px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
+          opacity: 1;
+          transform: translateY(0) scale(1);
+          pointer-events: auto;
         }
 
         .mobile-menu-content {
@@ -433,9 +452,9 @@ export function MainNav() {
           }
 
           .nav-container {
-            padding: 0.5rem 0.875rem;
+            padding: 0.5rem 0.75rem;
             border-radius: 40px;
-            gap: 1rem;
+            gap: 0.75rem;
           }
 
           .logo-text {
@@ -449,11 +468,10 @@ export function MainNav() {
           }
 
           .mobile-menu {
-            top: calc(2.5rem + 1rem);
+            top: 4rem;
             left: 0.5rem;
             right: 0.5rem;
-            border-radius: 12px;
-            max-width: none;
+            border-radius: 14px;
           }
         }
       `}</style>
@@ -586,6 +604,12 @@ export function MainNav() {
             </div>
           </div>
         </div>
+
+        {/* Mobile Overlay */}
+        <div
+          className={`mobile-overlay ${mobileMenuOpen ? 'open' : ''}`}
+          onClick={() => setMobileMenuOpen(false)}
+        />
       </div>
     </>
   );

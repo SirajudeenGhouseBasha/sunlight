@@ -44,8 +44,7 @@ async function getHomePageData() {
         base_price
       `)
       .eq('is_active', true)
-      .order('name', { ascending: true })
-      .limit(6),
+      .order('name', { ascending: true }),
   ]);
 
   let modelsMap: Record<string, any> = {};

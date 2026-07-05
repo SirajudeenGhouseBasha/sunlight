@@ -53,7 +53,7 @@ export default async function TrackOrderPage() {
               </div>
               <h2 className="text-lg font-semibold text-gray-900 mb-2">No orders yet</h2>
               <p className="text-sm text-gray-500 mb-6">You haven&apos;t placed any orders yet.</p>
-              <Link href="/products">
+              <Link href="/predesigned">
                 <Button>Start Shopping</Button>
               </Link>
             </CardContent>
