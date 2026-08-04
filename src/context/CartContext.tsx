@@ -1,13 +1,16 @@
 /**
  * Cart Context
- * 
- * Global cart state management with persistence
+ *
+ * Global cart state management with persistence.
+ * - Authenticated users: cart is stored in Supabase (cart_items) via /api/cart.
+ * - Guests: cart lives in localStorage and is merged into the account on login.
  * Requirements: 6.1, 6.2 - Cart state management
  */
 
 'use client';
 
-import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useRef, useEffect, ReactNode } from 'react';
+import { supabase } from '@/src/lib/supabase/client';
 
 export interface CartItemVariant {
   id: string;
@@ -42,6 +45,17 @@ export interface CartItemDesign {
   thumbnail_url?: string | null;
 }
 
+export interface CartItemModel {
+  id: string;
+  name: string;
+  slug: string;
+  brand?: {
+    id: string;
+    name: string;
+    slug: string;
+  } | null;
+}
+
 export interface CartItem {
   id: string;
   variant_id: string;
@@ -52,6 +66,15 @@ export interface CartItem {
   customization_options?: Record<string, unknown> | null;
   variant?: CartItemVariant | null;
   design?: CartItemDesign | null;
+  model?: CartItemModel | null;
+  product_type?: {
+    id: string;
+    name: string;
+    slug: string;
+    base_price: number;
+  } | null;
+  name?: string | null;
+  image_url?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -61,12 +84,25 @@ export interface CartSummary {
   item_count: number;
 }
 
+export interface GuestCartItem {
+  id: string;
+  variant_id?: string | null;
+  design_id?: string | null;
+  predesigned_product_id?: string | null;
+  quantity: number;
+  customization_options?: Record<string, unknown> | null;
+  name: string;
+  image_url?: string | null;
+  unit_price: number;
+}
+
 interface CartContextType {
   cartItems: CartItem[];
   summary: CartSummary | null;
   loading: boolean;
   error: string | null;
-  addToCart: (variantId: string, designId?: string, quantity?: number, customization?: Record<string, unknown>) => Promise<void>;
+  isLoggedIn: boolean;
+  addToCart: (variantId: string, designId?: string, quantity?: number, customization?: Record<string, unknown>, predesignedProductId?: string) => Promise<void>;
   updateCartItem: (itemId: string, quantity: number) => Promise<void>;
   removeFromCart: (itemId: string) => Promise<void>;
   clearCart: () => Promise<void>;
@@ -75,24 +111,192 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
+const GUEST_CART_KEY = 'sunlight_guest_cart';
+
+function loadGuestCart(): GuestCartItem[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(GUEST_CART_KEY);
+    return raw ? (JSON.parse(raw) as GuestCartItem[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function persistGuestCart(items: GuestCartItem[]) {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(GUEST_CART_KEY, JSON.stringify(items));
+  } catch {
+    // Storage may be unavailable (private mode) — guest cart is best-effort
+  }
+}
+
+function guestSignature(item: Pick<GuestCartItem, 'variant_id' | 'design_id' | 'predesigned_product_id' | 'customization_options'>): string {
+  return [
+    item.variant_id ?? '',
+    item.design_id ?? '',
+    item.predesigned_product_id ?? '',
+    JSON.stringify(item.customization_options ?? null),
+  ].join('|');
+}
+
+async function fetchGuestSnapshot(entry: { variant_id?: string | null; predesigned_product_id?: string | null }): Promise<{ name: string; image_url?: string | null; unit_price: number }> {
+  const fallback = { name: 'Phone Case', image_url: null as string | null, unit_price: 0 };
+  try {
+    if (entry.predesigned_product_id) {
+      const res = await fetch(`/api/predesigned/${entry.predesigned_product_id}`);
+      if (!res.ok) return fallback;
+      const data = await res.json();
+      const p = data.predesigned_product;
+      if (!p) return fallback;
+      const name = [p.brand?.name, p.model?.name, p.product_type?.name].filter(Boolean).join(' ') || p.name || 'Phone Case';
+      return {
+        name,
+        image_url: p.design_image_url || p.variant_image_url || null,
+        unit_price: Number(p.final_price ?? 0),
+      };
+    }
+    if (entry.variant_id) {
+      const res = await fetch(`/api/variants/${entry.variant_id}`);
+      if (!res.ok) return fallback;
+      const data = await res.json();
+      const v = data.variant;
+      if (!v) return fallback;
+      const model = Array.isArray(v.model) ? v.model[0] : v.model;
+      const brand = model && (Array.isArray(model.brand) ? model.brand[0] : model.brand);
+      const productType = Array.isArray(v.product_type) ? v.product_type[0] : v.product_type;
+      return {
+        name: [brand?.name, model?.name].filter(Boolean).join(' ') || v.name || 'Phone Case',
+        image_url: v.image_url || null,
+        unit_price: Number(productType?.base_price ?? 0) + Number(v.price_modifier ?? 0),
+      };
+    }
+  } catch {
+    // best-effort snapshot
+  }
+  return fallback;
+}
+
 export function CartProvider({ children }: { children: ReactNode }) {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [summary, setSummary] = useState<CartSummary | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [guestItems, setGuestItems] = useState<GuestCartItem[]>([]);
+  const authKnownRef = useRef(false);
+  const mergeInFlightRef = useRef(false);
+
+  // Track auth state so the cart can choose DB vs localStorage storage
+  useEffect(() => {
+    let mounted = true;
+
+    const applySession = async () => {
+      const { data } = await supabase.auth.getSession();
+      if (!mounted) return;
+      setIsLoggedIn(!!data.session);
+      authKnownRef.current = true;
+    };
+
+    applySession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event: string, session: { user: unknown } | null) => {
+        if (!mounted) return;
+        authKnownRef.current = true;
+        setIsLoggedIn(!!session);
+      }
+    );
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  // Load guest cart from localStorage on mount
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    setGuestItems(loadGuestCart());
+  }, []);
+
+  // Merge guest cart into the account after login
+  useEffect(() => {
+    if (!isLoggedIn || guestItems.length === 0 || mergeInFlightRef.current) return;
+    mergeInFlightRef.current = true;
+
+    (async () => {
+      try {
+        for (const item of guestItems) {
+          await fetch('/api/cart', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              variant_id: item.variant_id ?? null,
+              design_id: item.design_id ?? null,
+              predesigned_product_id: item.predesigned_product_id ?? null,
+              quantity: item.quantity,
+              customization_options: item.customization_options ?? null,
+            }),
+          });
+        }
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem(GUEST_CART_KEY);
+        }
+        setGuestItems([]);
+        await refreshCart();
+      } finally {
+        mergeInFlightRef.current = false;
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoggedIn, guestItems]);
+
+  const loadGuestCartState = useCallback(() => {
+    const items = loadGuestCart();
+    setGuestItems(items);
+    setCartItems(items.map((g) => ({
+      id: g.id,
+      variant_id: g.variant_id || '',
+      design_id: g.design_id || undefined,
+      quantity: g.quantity,
+      unit_price: g.unit_price,
+      total_price: g.unit_price * g.quantity,
+      customization_options: g.customization_options ?? null,
+      name: g.name,
+      image_url: g.image_url,
+      created_at: '',
+      updated_at: '',
+    })));
+    const subtotal = items.reduce((sum, g) => sum + g.unit_price * g.quantity, 0);
+    setSummary({
+      subtotal: subtotal.toFixed(2),
+      item_count: items.reduce((sum, g) => sum + g.quantity, 0),
+    });
+  }, []);
 
   const refreshCart = useCallback(async () => {
+    if (!authKnownRef.current) {
+      // Auth state not known yet — avoid 401 clearing the cart
+      return;
+    }
+    if (!isLoggedIn) {
+      loadGuestCartState();
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
 
       const response = await fetch('/api/cart');
-      
+
       if (!response.ok) {
         if (response.status === 401) {
-          // User not authenticated, clear cart
-          setCartItems([]);
-          setSummary(null);
+          // Session lost — fall back to guest cart
+          setIsLoggedIn(false);
+          loadGuestCartState();
           return;
         }
         throw new Error('Failed to fetch cart');
@@ -108,18 +312,47 @@ export function CartProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isLoggedIn, loadGuestCartState]);
 
   const addToCart = useCallback(
     async (
       variantId: string,
       designId?: string,
       quantity: number = 1,
-      customization?: Record<string, unknown>
+      customization?: Record<string, unknown>,
+      predesignedProductId?: string
     ) => {
-      try {
-        setError(null);
+      setError(null);
 
+      if (!isLoggedIn) {
+        const signature = guestSignature({ variant_id: variantId, design_id: designId, predesigned_product_id: predesignedProductId, customization_options: customization });
+        const snapshot = await fetchGuestSnapshot({ variant_id: variantId, predesigned_product_id: predesignedProductId });
+
+        const current = loadGuestCart();
+        const existing = current.find((g) => guestSignature(g) === signature);
+        let next: GuestCartItem[];
+        if (existing) {
+          next = current.map((g) => g === existing ? { ...g, quantity: g.quantity + quantity } : g);
+        } else {
+          next = [...current, {
+            id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            variant_id: variantId || null,
+            design_id: designId ?? null,
+            predesigned_product_id: predesignedProductId ?? null,
+            quantity,
+            customization_options: customization ?? null,
+            name: snapshot.name,
+            image_url: snapshot.image_url,
+            unit_price: snapshot.unit_price,
+          }];
+        }
+        persistGuestCart(next);
+        setGuestItems(next);
+        loadGuestCartState();
+        return;
+      }
+
+      try {
         const response = await fetch('/api/cart', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -128,6 +361,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
             design_id: designId,
             quantity,
             customization_options: customization,
+            predesigned_product_id: predesignedProductId,
           }),
         });
 
@@ -142,14 +376,23 @@ export function CartProvider({ children }: { children: ReactNode }) {
         throw err;
       }
     },
-    [refreshCart]
+    [isLoggedIn, refreshCart, loadGuestCartState]
   );
 
   const updateCartItem = useCallback(
     async (itemId: string, quantity: number) => {
-      try {
-        setError(null);
+      setError(null);
 
+      if (!isLoggedIn) {
+        const current = loadGuestCart();
+        const next = current.map((g) => g.id === itemId ? { ...g, quantity } : g);
+        persistGuestCart(next);
+        setGuestItems(next);
+        loadGuestCartState();
+        return;
+      }
+
+      try {
         const response = await fetch(`/api/cart/${itemId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -167,14 +410,23 @@ export function CartProvider({ children }: { children: ReactNode }) {
         throw err;
       }
     },
-    [refreshCart]
+    [isLoggedIn, refreshCart, loadGuestCartState]
   );
 
   const removeFromCart = useCallback(
     async (itemId: string) => {
-      try {
-        setError(null);
+      setError(null);
 
+      if (!isLoggedIn) {
+        const current = loadGuestCart();
+        const next = current.filter((g) => g.id !== itemId);
+        persistGuestCart(next);
+        setGuestItems(next);
+        loadGuestCartState();
+        return;
+      }
+
+      try {
         const response = await fetch(`/api/cart/${itemId}`, {
           method: 'DELETE',
         });
@@ -190,13 +442,23 @@ export function CartProvider({ children }: { children: ReactNode }) {
         throw err;
       }
     },
-    [refreshCart]
+    [isLoggedIn, refreshCart, loadGuestCartState]
   );
 
   const clearCart = useCallback(async () => {
-    try {
-      setError(null);
+    setError(null);
 
+    if (!isLoggedIn) {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem(GUEST_CART_KEY);
+      }
+      setGuestItems([]);
+      setCartItems([]);
+      setSummary(null);
+      return;
+    }
+
+    try {
       const response = await fetch('/api/cart', {
         method: 'DELETE',
       });
@@ -212,13 +474,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setError(err instanceof Error ? err.message : 'An unknown error occurred');
       throw err;
     }
-  }, []);
+  }, [isLoggedIn]);
 
   const value: CartContextType = {
     cartItems,
     summary,
     loading,
     error,
+    isLoggedIn,
     addToCart,
     updateCartItem,
     removeFromCart,

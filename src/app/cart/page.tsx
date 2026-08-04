@@ -14,6 +14,7 @@ export default function CartPage() {
     summary,
     loading,
     error,
+    isLoggedIn,
     updateCartItem,
     removeFromCart,
     clearCart,
@@ -79,6 +80,14 @@ export default function CartPage() {
           <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg text-sm mb-4">{error}</div>
         )}
 
+        {!isLoggedIn && cartItems.length > 0 && (
+          <div className="bg-orange-50 border border-orange-200 text-orange-800 px-4 py-3 rounded-lg text-sm mb-4 flex items-center justify-between gap-3 flex-wrap">
+            <span>
+              You're shopping as a guest. <Link href="/auth/login?redirectTo=/cart" className="font-semibold underline">Log in</Link> to save your cart and place orders.
+            </span>
+          </div>
+        )}
+
         {cartItems.length === 0 ? (
           <div className="flex items-center justify-center py-16 sm:py-20">
             <div className="text-center max-w-sm">
@@ -113,13 +122,17 @@ export default function CartPage() {
                   <CardContent className="p-3 sm:p-4">
                     <div className="flex gap-3 sm:gap-4">
                       {/* Design Preview */}
-                      {item.design && (
+                      {item.design || item.image_url ? (
                         <div className="w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100">
                           <img
-                            src={item.design.thumbnail_url || item.design.image_url}
-                            alt={item.design.name}
+                            src={item.design ? (item.design.thumbnail_url || item.design.image_url) : (item.image_url || '')}
+                            alt={item.design?.name || item.name || 'Cart item'}
                             className="w-full h-full object-cover"
                           />
+                        </div>
+                      ) : (
+                        <div className="w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center">
+                          <ShoppingBag className="w-6 h-6 sm:w-8 sm:h-8 text-gray-300" />
                         </div>
                       )}
 
@@ -128,10 +141,11 @@ export default function CartPage() {
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
                             <h3 className="text-sm sm:text-base font-semibold text-gray-900 truncate">
-                              {item.variant?.model?.brand?.name} {item.variant?.model?.name}
+                              {item.name || `${item.variant?.model?.brand?.name || ''} ${item.variant?.model?.name || item.model?.name || ''}`.trim()}
                             </h3>
                             <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
-                              {item.variant?.product_type?.name} - {item.variant?.color_name}
+                              {item.variant?.product_type?.name || item.product_type?.name}
+                              {item.variant?.color_name ? ` - ${item.variant.color_name}` : ''}
                             </p>
                             {item.design && (
                               <p className="text-xs text-gray-400 mt-0.5">Design: {item.design.name}</p>
@@ -211,9 +225,9 @@ export default function CartPage() {
                     <p className="text-[10px] sm:text-xs text-gray-400 mt-1">Inclusive of all taxes</p>
                   </div>
 
-                  <Link href="/checkout" className="block">
+                  <Link href={isLoggedIn ? '/checkout' : '/auth/login?redirectTo=/checkout'} className="block">
                     <Button className="w-full h-11 sm:h-12 text-sm sm:text-base gap-2">
-                      Proceed to Checkout <ShoppingBag className="w-4 h-4" />
+                      {isLoggedIn ? 'Proceed to Checkout' : 'Login to Checkout'} <ShoppingBag className="w-4 h-4" />
                     </Button>
                   </Link>
 

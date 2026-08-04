@@ -14,7 +14,6 @@ const protectedRoutes = [
   '/dashboard',
   '/profile',
   '/orders',
-  '/cart',
   '/designs',
   '/checkout',
 ];
@@ -36,13 +35,14 @@ const publicRoutes = [
   '/products',
   '/brands',
   '/models',
+  '/cart',
   '/auth/callback',
   '/auth/forgot-password',
   '/auth/reset-password',
 ];
 
 export async function middleware(request: NextRequest) {
-  let response = NextResponse.next({
+  const response = NextResponse.next({
     request: {
       headers: request.headers,
     },

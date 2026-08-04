@@ -2,7 +2,7 @@
 
 import { memo, useCallback } from 'react'
 import { ProductCard } from './ProductCard'
-import { useAddToCart } from '@/src/lib/queries/cart'
+import { useCart } from '@/src/context/CartContext'
 
 interface Product {
   id: string
@@ -23,14 +23,15 @@ export const ProductGrid = memo<ProductGridProps>(({
   className = '',
   showAddToCart = true 
 }) => {
-  const addToCartMutation = useAddToCart()
+  const { addToCart } = useCart()
   
-  const handleAddToCart = useCallback((productId: string) => {
-    addToCartMutation.mutate({
-      productId,
-      quantity: 1,
-    })
-  }, [addToCartMutation])
+  const handleAddToCart = useCallback(async (productId: string) => {
+    try {
+      await addToCart(productId)
+    } catch {
+      // Surface errors via the cart context
+    }
+  }, [addToCart])
 
   if (products.length === 0) {
     return (

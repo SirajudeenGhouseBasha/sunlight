@@ -65,8 +65,7 @@ export async function GET(
           id,
           name,
           base_price,
-          description,
-          material
+          description
         )
       `)
       .eq('id', id)

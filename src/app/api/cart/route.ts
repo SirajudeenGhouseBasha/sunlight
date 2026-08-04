@@ -37,7 +37,9 @@ export async function GET(_request: NextRequest) {
           model:models(id, name, slug, brand:brands(id, name, slug)),
           product_type:product_types(id, name, slug, base_price)
         ),
-        design:designs(id, name, image_url, thumbnail_url)
+        design:designs(id, name, image_url, thumbnail_url),
+        model:models(id, name, slug, brand:brands(id, name, slug)),
+        product_type:product_types(id, name, slug, base_price)
       `)
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
@@ -90,8 +92,8 @@ export async function POST(request: NextRequest) {
       customization_options,
     } = body;
 
-    // Support predesigned_product_id as an alias for design_id
-    const resolvedDesignId = design_id || (predesigned_product_id || undefined);
+    // Support predesigned_product_id as an alias for design_id (legacy linked rows)
+    const resolvedDesignId = design_id || undefined;
 
     if (!quantity || quantity < 1) {
       return NextResponse.json({ error: 'Valid quantity is required' }, { status: 400 });
@@ -108,6 +110,95 @@ export async function POST(request: NextRequest) {
     }
 
     let unitPrice: number;
+
+    // ── Case 0: Decoupled predesigned — no variant, no design ─────────────
+    if (predesigned_product_id) {
+      const { data: product, error: productError } = await supabase
+        .from('predesigned_products')
+        .select(`
+          *,
+          model:models(id, name, slug, brand:brands(id, name, slug)),
+          product_type:product_types(id, name, base_price)
+        `)
+        .eq('id', predesigned_product_id)
+        .single();
+
+      if (productError || !product) {
+        return NextResponse.json(
+          { error: 'Invalid predesigned_product_id' },
+          { status: 400 }
+        );
+      }
+
+      const basePrice = product.product_type?.base_price
+        ? parseFloat(product.product_type.base_price)
+        : 0;
+      unitPrice = product.price_override != null
+        ? parseFloat(product.price_override)
+        : basePrice;
+
+      const itemSelect = `
+        *,
+        variant:variants(
+          *,
+          model:models(id, name, slug, brand:brands(id, name, slug)),
+          product_type:product_types(id, name, slug, base_price)
+        ),
+        design:designs(id, name, image_url, thumbnail_url),
+        model:models(id, name, slug, brand:brands(id, name, slug)),
+        product_type:product_types(id, name, base_price)
+      `;
+
+      const { data: existing } = await supabase
+        .from('cart_items')
+        .select('id, quantity')
+        .eq('user_id', user.id)
+        .is('variant_id', null)
+        .is('design_id', null)
+        .eq('model_id', product.model_id)
+        .eq('product_type_id', product.product_type_id)
+        .maybeSingle();
+
+      if (existing) {
+        const newQty = existing.quantity + quantity;
+        const { data: updated, error: updateError } = await supabase
+          .from('cart_items')
+          .update({
+            quantity: newQty,
+            total_price: unitPrice * newQty,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', existing.id)
+          .select(itemSelect)
+          .single();
+
+        if (updateError) {
+          return NextResponse.json({ error: 'Failed to update cart item' }, { status: 500 });
+        }
+        return NextResponse.json({ cart_item: updated });
+      }
+
+      const { data: cartItem, error: insertError } = await supabase
+        .from('cart_items')
+        .insert({
+          user_id: user.id,
+          variant_id: null,
+          design_id: null,
+          model_id: product.model_id,
+          product_type_id: product.product_type_id,
+          quantity,
+          unit_price: unitPrice,
+          total_price: unitPrice * quantity,
+          customization_options: customization_options ?? null,
+        })
+        .select(itemSelect)
+        .single();
+
+      if (insertError) {
+        return NextResponse.json({ error: 'Failed to add item to cart' }, { status: 500 });
+      }
+      return NextResponse.json({ cart_item: cartItem }, { status: 201 });
+    }
 
     // ── Case 1: Predesigned — variant + design ───────────────────────────
     if (hasDesign) {

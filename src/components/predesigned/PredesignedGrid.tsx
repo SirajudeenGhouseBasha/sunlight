@@ -21,8 +21,6 @@ interface PredesignedProduct {
   category: string
   tags: string[]
   is_featured: boolean
-  variant_id: string
-  design_id: string
   stock_quantity: number
   in_stock: boolean
 }
@@ -46,14 +44,7 @@ function PredesignedCard({ product, index }: { product: PredesignedProduct; inde
     }
 
     try {
-      await addToCart(
-        product.variant_id, 
-        product.design_id, 
-        1, 
-        {
-          predesigned_product_id: product.id
-        }
-      )
+      await addToCart('', undefined, 1, undefined, product.id)
       toast.success('Added to cart!', {
         icon: '🛒',
         style: {

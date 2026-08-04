@@ -10,9 +10,10 @@ interface ProductActionsProps {
   variantId: string;
   designId?: string;
   isPredesigned?: boolean;
+  predesignedProductId?: string;
 }
 
-export function ProductActions({ variantId, designId, isPredesigned = false }: ProductActionsProps) {
+export function ProductActions({ variantId, designId, isPredesigned = false, predesignedProductId }: ProductActionsProps) {
   const router = useRouter();
   const { addToCart, refreshCart, loading: cartLoading } = useCart();
   const [adding, setAdding] = useState(false);
@@ -23,7 +24,7 @@ export function ProductActions({ variantId, designId, isPredesigned = false }: P
     setAdding(true);
     setError(null);
     try {
-      await addToCart(variantId, isPredesigned ? variantId : designId);
+      await addToCart(variantId, designId, 1, undefined, predesignedProductId);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not add to cart.');
     } finally {
@@ -35,7 +36,7 @@ export function ProductActions({ variantId, designId, isPredesigned = false }: P
     setBuying(true);
     setError(null);
     try {
-      await addToCart(variantId, isPredesigned ? variantId : designId);
+      await addToCart(variantId, designId, 1, undefined, predesignedProductId);
       await refreshCart();
       router.push('/checkout');
     } catch (err) {

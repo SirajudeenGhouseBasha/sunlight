@@ -13,6 +13,7 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { toProxiedUrl } from '@/src/utils/image-url';
+import { useCart } from '@/src/context/CartContext';
 
 // =============================================
 // TYPES
@@ -58,18 +59,6 @@ async function fetchPredesigned(featuredOnly: boolean, limit: number): Promise<P
   return data.products ?? data.predesigned_products ?? [];
 }
 
-async function addToCart(productId: string): Promise<void> {
-  const res = await fetch('/api/cart', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ predesigned_product_id: productId, quantity: 1 }),
-  });
-  if (!res.ok) {
-    const d = await res.json();
-    throw new Error(d.error ?? 'Failed to add to cart');
-  }
-}
-
 // =============================================
 // HELPERS
 // =============================================
@@ -85,12 +74,13 @@ function calcPrice(product: PredesignedProduct): number {
 function ProductCard({ product }: { product: PredesignedProduct }) {
   const queryClient = useQueryClient();
   const [added, setAdded] = useState(false);
+  const { addToCart } = useCart();
 
   const price = calcPrice(product);
   const imageUrl = toProxiedUrl(product.design_image_url ?? product.variant_image_url ?? null);
 
   const mutation = useMutation({
-    mutationFn: () => addToCart(product.id),
+    mutationFn: () => addToCart('', undefined, 1, undefined, product.id),
     onSuccess: () => {
       setAdded(true);
       queryClient.invalidateQueries({ queryKey: ['cart'] });

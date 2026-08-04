@@ -96,8 +96,6 @@ async function getPredesignedProducts(featured?: string, brand?: string, categor
       category: 'predesigned',
       tags: [],
       is_featured: item.is_featured,
-      variant_id: item.id,
-      design_id: item.id,
       stock_quantity: 100,
       in_stock: true,
     }

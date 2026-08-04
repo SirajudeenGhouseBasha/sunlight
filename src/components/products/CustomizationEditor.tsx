@@ -21,6 +21,7 @@ import { Rnd } from 'react-rnd';
 import { Button } from '@/src/components/ui/button';
 import { Input } from '@/src/components/ui/input';
 import { Label } from '@/src/components/ui/label';
+import { useCart } from '@/src/context/CartContext';
 import {
   ImagePlus,
   Type,
@@ -107,6 +108,7 @@ export function CustomizationEditor({
   productName,
 }: CustomizationEditorProps) {
   const router = useRouter();
+  const { addToCart } = useCart();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -786,17 +788,7 @@ export function CustomizationEditor({
                   setLoading(true);
                   setError(null);
                   try {
-                    const res = await fetch('/api/cart', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        variant_id: variantId,
-                        quantity: 1,
-                        customization_options: { elements },
-                      }),
-                    });
-                    if (res.status === 401) { router.push('/auth/login'); return; }
-                    if (!res.ok) throw new Error('Failed to add custom design to cart');
+                    await addToCart(variantId, undefined, 1, { elements });
                     alert('Success! Your custom design has been saved and added to your cart.');
                   } catch {
                     setError('Failed to add custom design to cart. Please try again.');
@@ -815,17 +807,7 @@ export function CustomizationEditor({
                   setLoading(true);
                   setError(null);
                   try {
-                    const res = await fetch('/api/cart', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        variant_id: variantId,
-                        quantity: 1,
-                        customization_options: { elements },
-                      }),
-                    });
-                    if (res.status === 401) { router.push('/auth/login'); return; }
-                    if (!res.ok) throw new Error('Failed to buy custom design');
+                    await addToCart(variantId, undefined, 1, { elements });
                     router.push('/cart');
                   } catch {
                     setError('Failed to complete purchase. Please try again.');
