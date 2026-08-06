@@ -127,6 +127,12 @@ export async function PATCH(request: NextRequest) {
       updateData.shipped_at = new Date().toISOString();
     }
 
+    // Action 3: Mark as delivered
+    if (action === 'mark-delivered') {
+      updateData.status = 'DELIVERED';
+      updateData.delivered_at = new Date().toISOString();
+    }
+
     const { data: order, error } = await supabase
       .from('orders')
       .update(updateData)

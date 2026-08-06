@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
+import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { Heart, ShoppingCart, Star, Eye } from 'lucide-react'
 import { useCart } from '@/src/context/CartContext'
@@ -32,30 +33,57 @@ interface PredesignedGridProps {
 function PredesignedCard({ product, index }: { product: PredesignedProduct; index: number }) {
   const [isHovered, setIsHovered] = useState(false)
   const [isLiked, setIsLiked] = useState(false)
+  const [adding, setAdding] = useState(false)
   const { addToCart } = useCart()
+  const router = useRouter()
 
   const handleAddToCart = async (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    
+
     if (!product.in_stock) {
       toast.error('This item is out of stock')
       return
     }
 
+    setAdding(true)
     try {
       await addToCart('', undefined, 1, undefined, product.id)
-      toast.success('Added to cart!', {
-        icon: '🛒',
-        style: {
-          background: '#f3f4f6',
-          color: '#000',
-          border: '1px solid rgba(0, 0, 0, 0.1)',
-        },
-      })
-    } catch (error) {
-      console.error('Failed to add to cart:', error)
+      toast(
+        (t) => (
+          <div className="flex items-center gap-3">
+            <span className="text-lg">🛒</span>
+            <div className="flex-1 min-w-0">
+              <p className="font-medium text-gray-900 text-sm">Added to cart!</p>
+              <p className="text-xs text-gray-500 truncate">{product.name}</p>
+            </div>
+            <button
+              onClick={() => {
+                toast.dismiss(t.id)
+                router.push('/cart')
+              }}
+              className="shrink-0 px-3 py-1.5 bg-black text-white text-xs font-medium rounded-lg hover:bg-gray-800 transition-colors"
+            >
+              View Cart
+            </button>
+          </div>
+        ),
+        {
+          duration: 4000,
+          style: {
+            background: '#fff',
+            color: '#111',
+            border: '1px solid #e5e7eb',
+            borderRadius: '10px',
+            padding: '12px 14px',
+            maxWidth: '360px',
+          },
+        }
+      )
+    } catch {
       toast.error('Failed to add to cart')
+    } finally {
+      setAdding(false)
     }
   }
 
@@ -132,15 +160,15 @@ function PredesignedCard({ product, index }: { product: PredesignedProduct; inde
             }`}>
               <button
                 onClick={handleAddToCart}
-                disabled={!product.in_stock}
+                disabled={!product.in_stock || adding}
                 className={`w-full py-2 px-4 rounded-lg font-medium text-sm transition-colors ${
                   product.in_stock
-                    ? 'bg-black text-white hover:bg-gray-800'
+                    ? 'bg-black text-white hover:bg-gray-800 disabled:opacity-70'
                     : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                 }`}
               >
                 <ShoppingCart size={16} className="inline mr-2" />
-                {product.in_stock ? 'Quick Add' : 'Out of Stock'}
+                {adding ? 'Adding…' : product.in_stock ? 'Quick Add' : 'Out of Stock'}
               </button>
             </div>
           </div>

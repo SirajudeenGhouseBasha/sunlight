@@ -11,7 +11,6 @@ import { useCart } from '@/src/context/CartContext';
 import { LocationPicker } from '@/src/components/map/LocationPicker';
 import type { LocationData } from '@/src/components/map/LocationPicker';
 import { ChevronLeft, ChevronRight, Check, CreditCard, MapPin, User, Package, X, ExternalLink } from 'lucide-react';
-
 interface UpiConfig {
   upi_id: string;
   phone: string;
@@ -21,9 +20,10 @@ interface UpiConfig {
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { cartItems, summary, clearCart, refreshCart, loading: cartLoading } = useCart();
+  const { cartItems, summary, clearCart, refreshCart, loading: cartLoading, isLoggedIn } = useCart();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [cartReady, setCartReady] = useState(false);
 
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
@@ -49,7 +49,7 @@ export default function CheckoutPage() {
   const [placedOrderId, setPlacedOrderId] = useState<string | null>(null);
 
   useEffect(() => {
-    refreshCart();
+    refreshCart().finally(() => setCartReady(true));
     fetchUpiConfig();
   }, [refreshCart]);
 
@@ -88,20 +88,36 @@ export default function CheckoutPage() {
     setLoading(true);
 
     try {
+      // Build the request body. For guest users, include cart items from context
+      // (mapped from localStorage) so the server can create the order without a session.
+      const orderPayload: Record<string, unknown> = {
+        customer_name: customerName,
+        customer_phone: customerPhone,
+        customer_email: customerEmail || undefined,
+        shipping_address: shippingAddress,
+        delivery_location: deliveryLocation || undefined,
+        notes: '',
+        payment_method: 'upi',
+        upi_transaction_id: upiTransactionId,
+        payment_screenshot_url: screenshotUrl || undefined,
+      };
+
+      if (!isLoggedIn) {
+        // Pass guest cart items so the API can create the order without a user session
+        orderPayload.guest_cart_items = cartItems.map((item) => ({
+          variant_id: item.variant_id || null,
+          design_id: item.design_id || null,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          model_id: (item.model as { id?: string } | null | undefined)?.id ?? null,
+          product_type_id: (item.product_type as { id?: string } | null | undefined)?.id ?? null,
+        }));
+      }
+
       const response = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          customer_name: customerName,
-          customer_phone: customerPhone,
-          customer_email: customerEmail || undefined,
-          shipping_address: shippingAddress,
-          delivery_location: deliveryLocation || undefined,
-          notes: '',
-          payment_method: 'upi',
-          upi_transaction_id: upiTransactionId,
-          payment_screenshot_url: screenshotUrl || undefined,
-        }),
+        body: JSON.stringify(orderPayload),
       });
 
       const data = await response.json();
@@ -120,7 +136,7 @@ export default function CheckoutPage() {
     }
   };
 
-  if (cartLoading) {
+  if (cartLoading || !cartReady) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">

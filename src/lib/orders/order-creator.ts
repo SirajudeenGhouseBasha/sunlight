@@ -5,7 +5,7 @@ import { getProductType } from '@/src/utils/product-type-discriminator';
 export interface CartItem {
   id: string;
   cart_id: string;
-  variant_id: string;
+  variant_id: string | null;
   quantity: number;
   unit_price: number;
   design_id?: string | null;
@@ -70,6 +70,49 @@ export class OrderCreator {
     }
 
     const items = cartItems as CartItem[];
+    return this.createOrder(items, options, userId);
+  }
+
+  async createOrderFromGuestCart(
+    guestCartItems: Array<{
+      variant_id?: string | null;
+      quantity: number;
+      unit_price: number;
+      design_id?: string | null;
+      custom_design_data?: Record<string, unknown> | null;
+      product_type?: string | null;
+      model_id?: string | null;
+      product_type_id?: string | null;
+    }>,
+    options: CreateOrderOptions,
+    userId: string | null = null
+  ): Promise<CreateOrderResult> {
+    if (!guestCartItems || guestCartItems.length === 0) {
+      return { success: false, error: 'Cart is empty. Cannot create an order.' };
+    }
+
+    // Map guest cart items to the internal CartItem shape
+    const items: CartItem[] = guestCartItems.map((g, i) => ({
+      id: `guest-${i}`,
+      cart_id: 'guest',
+      variant_id: g.variant_id || null,   // null, not "" — empty string breaks UUID columns
+      quantity: g.quantity,
+      unit_price: g.unit_price,
+      design_id: g.design_id ?? null,
+      custom_design_data: g.custom_design_data ?? null,
+      product_type: g.product_type ?? null,
+      model_id: g.model_id ?? null,
+      product_type_id: g.product_type_id ?? null,
+    }));
+
+    return this.createOrder(items, options, userId);
+  }
+
+  private async createOrder(
+    items: CartItem[],
+    options: CreateOrderOptions,
+    userId: string | null
+  ): Promise<CreateOrderResult> {
 
     const stockErrors = await this.validateStock(items);
     if (stockErrors.length > 0) {
@@ -130,7 +173,8 @@ export class OrderCreator {
     const errors: string[] = [];
 
     for (const item of items) {
-      if (getProductType(item) !== 'predesigned') continue;
+      // Only check stock for predesigned items that have a variant
+      if (!item.variant_id || getProductType(item) !== 'predesigned') continue;
 
       const check = await this.stock.checkStock(item.variant_id, item.quantity);
       if (!check.available) {
@@ -148,7 +192,8 @@ export class OrderCreator {
     const orderItemIds: string[] = [];
     const decrementedVariants: Array<{ variant_id: string; quantity: number }> = [];
 
-    const variantIds = items.map((i) => i.variant_id).filter(Boolean);
+    // Only fetch variant names for items that actually have a variant_id
+    const variantIds = items.map((i) => i.variant_id).filter((v): v is string => !!v);
     const variantNamesMap: Record<string, { product_name: string; variant_name: string }> = {};
 
     if (variantIds.length > 0) {
@@ -182,7 +227,8 @@ export class OrderCreator {
     for (const item of items) {
       const productType = getProductType(item);
 
-      if (productType === 'predesigned') {
+      // Only decrement stock for predesigned items that have a real variant
+      if (productType === 'predesigned' && item.variant_id) {
         const stockResult = await this.stock.decrementStock(
           item.variant_id,
           item.quantity,
@@ -201,16 +247,19 @@ export class OrderCreator {
         decrementedVariants.push({ variant_id: item.variant_id, quantity: item.quantity });
       }
 
-      const names = variantNamesMap[item.variant_id] ?? {
+      const names = (item.variant_id && variantNamesMap[item.variant_id]) || {
         product_name: 'Phone Case',
         variant_name: 'Standard',
       };
+
+      // Use null for empty/missing variant_id — never send "" to a UUID column
+      const variantId = item.variant_id || null;
 
       const { data: orderItem, error: itemError } = await this.supabase
         .from('order_items')
         .insert({
           order_id: orderId,
-          variant_id: item.variant_id,
+          variant_id: variantId,
           product_name: names.product_name,
           variant_name: names.variant_name,
           quantity: item.quantity,
@@ -232,7 +281,7 @@ export class OrderCreator {
             'Rollback: order item insert failed'
           );
         }
-        throw new Error(`Failed to insert order item for variant "${item.variant_id}": ${itemError?.message}`);
+        throw new Error(`Failed to insert order item for variant "${variantId}": ${itemError?.message}`);
       }
 
       orderItemIds.push((orderItem as { id: string }).id);
@@ -241,7 +290,8 @@ export class OrderCreator {
     return orderItemIds;
   }
 
-  async clearCart(userId: string): Promise<void> {
+  async clearCart(userId: string | null): Promise<void> {
+    if (!userId) return; // Guest cart is cleared client-side
     const { error } = await this.supabase
       .from('cart_items')
       .delete()

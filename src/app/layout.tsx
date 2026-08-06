@@ -5,6 +5,7 @@ import { CartProvider } from "@/src/context/CartContext";
 import { QueryProvider } from "@/src/components/providers/query-provider";
 import { RouteLoader } from "@/src/components/providers/RouteLoader";
 import { SiteHeader } from "@/src/components/navigation/SiteHeader";
+import { Toaster } from "react-hot-toast";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -47,6 +48,19 @@ export default function RootLayout({
               {children}
             </CartProvider>
           </QueryProvider>
+          <Toaster
+            position="bottom-right"
+            toastOptions={{
+              duration: 3500,
+              style: {
+                background: '#fff',
+                color: '#111',
+                border: '1px solid #e5e7eb',
+                borderRadius: '10px',
+                fontSize: '14px',
+              },
+            }}
+          />
         </div>
       </body>
     </html>

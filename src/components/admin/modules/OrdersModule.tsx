@@ -24,6 +24,7 @@ export interface AdminOrder {
   notes?: string;
   tracking_number?: string;
   shipped_at?: string;
+  delivered_at?: string;
   created_at: string;
   users?: {
     full_name?: string;
@@ -37,11 +38,13 @@ interface OrderDetailProps {
   onClose: () => void;
   onVerify: (id: string) => Promise<void>;
   onShip: (id: string, trackingNumber: string) => Promise<void>;
+  onDeliver: (id: string) => Promise<void>;
   verifying: boolean;
   shipping: boolean;
+  delivering: boolean;
 }
 
-function OrderDetailModal({ order, onClose, onVerify, onShip, verifying, shipping }: OrderDetailProps) {
+function OrderDetailModal({ order, onClose, onVerify, onShip, onDeliver, verifying, shipping, delivering }: OrderDetailProps) {
   const [trackingNumber, setTrackingNumber] = useState(order.tracking_number || '');
 
   const statusDisplay = (status: string) => {
@@ -49,8 +52,19 @@ function OrderDetailModal({ order, onClose, onVerify, onShip, verifying, shippin
       PENDING_PAYMENT: 'Pending Payment Verification',
       PAID: 'Paid / Confirmed',
       SHIPPED: 'Shipped',
+      DELIVERED: 'Delivered',
     };
     return labels[status] || status;
+  };
+
+  const statusBadgeColor = (status: string) => {
+    const colors: Record<string, string> = {
+      PENDING_PAYMENT: 'bg-yellow-100 text-yellow-800',
+      PAID: 'bg-blue-100 text-blue-800',
+      SHIPPED: 'bg-green-100 text-green-800',
+      DELIVERED: 'bg-gray-100 text-gray-800',
+    };
+    return colors[status] || 'bg-gray-100 text-gray-800';
   };
 
   return (
@@ -65,11 +79,7 @@ function OrderDetailModal({ order, onClose, onVerify, onShip, verifying, shippin
           {/* Status */}
           <div className="bg-gray-50 rounded-lg p-3">
             <p className="text-gray-500 text-sm mb-1">Status</p>
-            <span className={`px-3 py-1 rounded-full text-xs font-semibold inline-block ${
-              order.status === 'SHIPPED' ? 'bg-green-100 text-green-800' :
-              order.status === 'PAID' ? 'bg-blue-100 text-blue-800' :
-              'bg-yellow-100 text-yellow-800'
-            }`}>
+            <span className={`px-3 py-1 rounded-full text-xs font-semibold inline-block ${statusBadgeColor(order.status)}`}>
               {statusDisplay(order.status)}
             </span>
           </div>
@@ -172,6 +182,27 @@ function OrderDetailModal({ order, onClose, onVerify, onShip, verifying, shippin
             </div>
           )}
 
+          {/* Action 3: Mark as Delivered */}
+          {order.status === 'SHIPPED' && (
+            <button
+              onClick={() => onDeliver(order.id)}
+              disabled={delivering}
+              className="w-full px-4 py-2.5 bg-green-700 text-white rounded-lg hover:bg-green-800 disabled:opacity-50 font-medium text-sm"
+            >
+              {delivering ? 'Processing...' : '✓ Mark as Delivered'}
+            </button>
+          )}
+
+          {/* Delivered info */}
+          {order.status === 'DELIVERED' && (
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+              <p className="text-sm font-medium text-gray-900">Delivered to Customer</p>
+              {order.delivered_at && (
+                <p className="text-xs text-gray-600 mt-1">Delivered on: {new Date(order.delivered_at).toLocaleString()}</p>
+              )}
+            </div>
+          )}
+
           {order.notes && (
             <div>
               <h3 className="font-semibold text-gray-900 mb-2">Notes</h3>
@@ -226,6 +257,7 @@ export function OrdersModule() {
   const [selectedOrder, setSelectedOrder] = useState<AdminOrder | null>(null);
   const [verifying, setVerifying] = useState(false);
   const [shipping, setShipping] = useState(false);
+  const [delivering, setDelivering] = useState(false);
 
   const handleVerify = useCallback(async (id: string) => {
     setVerifying(true);
@@ -269,11 +301,33 @@ export function OrdersModule() {
     }
   }, [table, showToast]);
 
+  const handleDeliver = useCallback(async (id: string) => {
+    setDelivering(true);
+    try {
+      const response = await fetch('/api/admin/orders', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, action: 'mark-delivered' }),
+      });
+
+      if (!response.ok) throw new Error('Failed to mark as delivered');
+
+      showToast('Order marked as delivered', 'success');
+      setSelectedOrder(null);
+      table.retry();
+    } catch {
+      showToast('Failed to mark as delivered', 'error');
+    } finally {
+      setDelivering(false);
+    }
+  }, [table, showToast]);
+
   const statusDisplay = (status: string) => {
     const labels: Record<string, string> = {
       PENDING_PAYMENT: 'Pending Payment',
       PAID: 'Paid / Confirmed',
       SHIPPED: 'Shipped',
+      DELIVERED: 'Delivered',
     };
     return labels[status] || status;
   };
@@ -318,6 +372,7 @@ export function OrdersModule() {
           PENDING_PAYMENT: 'bg-yellow-100 text-yellow-800',
           PAID: 'bg-blue-100 text-blue-800',
           SHIPPED: 'bg-green-100 text-green-800',
+          DELIVERED: 'bg-gray-100 text-gray-800',
         };
         return (
           <span className={`px-3 py-1 rounded-full text-xs font-semibold inline-block ${colors[value] || 'bg-gray-100 text-gray-800'}`}>
@@ -364,7 +419,7 @@ export function OrdersModule() {
           />
         </div>
         <div className="flex gap-2">
-          {['', 'PENDING_PAYMENT', 'PAID', 'SHIPPED'].map((filter) => (
+          {['', 'PENDING_PAYMENT', 'PAID', 'SHIPPED', 'DELIVERED'].map((filter) => (
             <button
               key={filter}
               onClick={() => table.handleSearch(filter)}
@@ -416,8 +471,10 @@ export function OrdersModule() {
           onClose={() => setSelectedOrder(null)}
           onVerify={handleVerify}
           onShip={handleShip}
+          onDeliver={handleDeliver}
           verifying={verifying}
           shipping={shipping}
+          delivering={delivering}
         />
       )}
     </div>

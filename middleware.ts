@@ -15,7 +15,6 @@ const protectedRoutes = [
   '/profile',
   '/orders',
   '/designs',
-  '/checkout',
 ];
 
 // Routes that require admin role
@@ -36,6 +35,7 @@ const publicRoutes = [
   '/brands',
   '/models',
   '/cart',
+  '/checkout',
   '/auth/callback',
   '/auth/forgot-password',
   '/auth/reset-password',

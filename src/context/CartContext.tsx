@@ -215,10 +215,32 @@ export function CartProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  // Load guest cart from localStorage on mount
+  // Load guest cart from localStorage immediately on mount (no auth needed)
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    setGuestItems(loadGuestCart());
+    const items = loadGuestCart();
+    setGuestItems(items);
+    if (items.length > 0) {
+      // Populate cartItems right away so pages don't flash empty
+      setCartItems(items.map((g) => ({
+        id: g.id,
+        variant_id: g.variant_id || '',
+        design_id: g.design_id || undefined,
+        quantity: g.quantity,
+        unit_price: g.unit_price,
+        total_price: g.unit_price * g.quantity,
+        customization_options: g.customization_options ?? null,
+        name: g.name,
+        image_url: g.image_url,
+        created_at: '',
+        updated_at: '',
+      })));
+      const subtotal = items.reduce((sum, g) => sum + g.unit_price * g.quantity, 0);
+      setSummary({
+        subtotal: subtotal.toFixed(2),
+        item_count: items.reduce((sum, g) => sum + g.quantity, 0),
+      });
+    }
   }, []);
 
   // Merge guest cart into the account after login
@@ -278,8 +300,18 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const refreshCart = useCallback(async () => {
     if (!authKnownRef.current) {
-      // Auth state not known yet — avoid 401 clearing the cart
-      return;
+      // Auth not resolved yet — wait up to 1.5s for it, then fall back to guest cart
+      await new Promise<void>((resolve) => {
+        const start = Date.now();
+        const check = () => {
+          if (authKnownRef.current || Date.now() - start > 1500) {
+            resolve();
+          } else {
+            setTimeout(check, 30);
+          }
+        };
+        check();
+      });
     }
     if (!isLoggedIn) {
       loadGuestCartState();

@@ -95,6 +95,7 @@ export async function GET(
 // Owner actions:
 //   1. Verify payment  → status: 'PAID'
 //   2. Add tracking    → status: 'SHIPPED' + tracking_number
+//   3. Mark delivered  → status: 'DELIVERED'
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -141,6 +142,11 @@ export async function PUT(
     if (status === 'SHIPPED') {
       updateData.status = 'SHIPPED';
       updateData.shipped_at = new Date().toISOString();
+    }
+    
+    if (status === 'DELIVERED') {
+      updateData.status = 'DELIVERED';
+      updateData.delivered_at = new Date().toISOString();
     }
     
     if (tracking_number !== undefined) {

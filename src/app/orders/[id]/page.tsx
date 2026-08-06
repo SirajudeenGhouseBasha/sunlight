@@ -97,6 +97,7 @@ export default function OrderDetailsPage() {
       PENDING_PAYMENT: 'bg-yellow-100 text-yellow-800',
       PAID: 'bg-blue-100 text-blue-800',
       SHIPPED: 'bg-green-100 text-green-800',
+      DELIVERED: 'bg-gray-100 text-gray-800',
     };
     return colors[status] || 'bg-gray-100 text-gray-800';
   };
@@ -106,6 +107,7 @@ export default function OrderDetailsPage() {
       PENDING_PAYMENT: 'Pending Payment Verification',
       PAID: 'Paid / Confirmed',
       SHIPPED: 'Shipped',
+      DELIVERED: 'Delivered',
     };
     return labels[status] || status;
   };
@@ -259,13 +261,14 @@ export default function OrderDetailsPage() {
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Status</span>
                     <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                      order.status === 'PAID' || order.status === 'SHIPPED' ? 'bg-green-100 text-green-800' :
+                      order.status === 'PAID' || order.status === 'SHIPPED' || order.status === 'DELIVERED' ? 'bg-green-100 text-green-800' :
                       order.status === 'PENDING_PAYMENT' ? 'bg-yellow-100 text-yellow-800' :
                       'bg-gray-100 text-gray-800'
                     }`}>
                       {order.status === 'PENDING_PAYMENT' ? 'Pending Verification' :
                        order.status === 'PAID' ? 'Verified' :
                        order.status === 'SHIPPED' ? 'Paid' :
+                       order.status === 'DELIVERED' ? 'Paid' :
                        order.status}
                     </span>
                   </div>
