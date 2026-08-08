@@ -5,17 +5,15 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/src/components/ui/button';
 import { useCart } from '@/src/context/CartContext';
 import { ShoppingBag, Zap, Sparkles } from 'lucide-react';
-import { toast } from 'react-hot-toast';
 
 interface ProductActionsProps {
   variantId: string;
   designId?: string;
   isPredesigned?: boolean;
   predesignedProductId?: string;
-  productName?: string;
 }
 
-export function ProductActions({ variantId, designId, isPredesigned = false, predesignedProductId, productName }: ProductActionsProps) {
+export function ProductActions({ variantId, designId, isPredesigned = false, predesignedProductId }: ProductActionsProps) {
   const router = useRouter();
   const { addToCart, refreshCart, loading: cartLoading } = useCart();
   const [adding, setAdding] = useState(false);
@@ -27,37 +25,6 @@ export function ProductActions({ variantId, designId, isPredesigned = false, pre
     setError(null);
     try {
       await addToCart(variantId, designId, 1, undefined, predesignedProductId);
-      toast(
-        (t) => (
-          <div className="flex items-center gap-3">
-            <span className="text-lg">🛒</span>
-            <div className="flex-1 min-w-0">
-              <p className="font-medium text-gray-900 text-sm">Added to cart!</p>
-              {productName && <p className="text-xs text-gray-500 truncate">{productName}</p>}
-            </div>
-            <button
-              onClick={() => {
-                toast.dismiss(t.id);
-                router.push('/cart');
-              }}
-              className="shrink-0 px-3 py-1.5 bg-black text-white text-xs font-medium rounded-lg hover:bg-gray-800 transition-colors"
-            >
-              View Cart
-            </button>
-          </div>
-        ),
-        {
-          duration: 4000,
-          style: {
-            background: '#fff',
-            color: '#111',
-            border: '1px solid #e5e7eb',
-            borderRadius: '10px',
-            padding: '12px 14px',
-            maxWidth: '360px',
-          },
-        }
-      );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not add to cart.');
     } finally {

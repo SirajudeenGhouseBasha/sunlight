@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono, Outfit } from "next/font/google";
 import "./globals.css";
 import { CartProvider } from "@/src/context/CartContext";
+import { CartDrawer } from "@/src/components/cart/CartDrawer";
 import { QueryProvider } from "@/src/components/providers/query-provider";
 import { RouteLoader } from "@/src/components/providers/RouteLoader";
 import { SiteHeader } from "@/src/components/navigation/SiteHeader";
@@ -46,6 +47,7 @@ export default function RootLayout({
           <QueryProvider>
             <CartProvider>
               {children}
+              <CartDrawer />
             </CartProvider>
           </QueryProvider>
           <Toaster

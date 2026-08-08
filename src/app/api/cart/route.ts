@@ -341,6 +341,69 @@ export async function POST(request: NextRequest) {
       price_override: null,
     });
 
+    // Custom design elements added on a base variant (CustomizationEditor flow).
+    // Store them as custom_design_data (with model + product type from the
+    // variant) so the design survives cart → order_items and satisfies the
+    // custom-item schema constraints.
+    const customElements = customization_options as { elements?: unknown[] } | null;
+    const hasCustomElements =
+      !!customElements && Array.isArray(customElements.elements) && customElements.elements.length > 0;
+
+    if (hasCustomElements) {
+      const serializedDesign = JSON.stringify(customization_options);
+
+      const { data: existingList } = await supabase
+        .from('cart_items')
+        .select('id, quantity, custom_design_data')
+        .eq('user_id', user.id)
+        .eq('variant_id', variant_id)
+        .not('custom_design_data', 'is', null);
+
+      // Two different designs on the same variant are distinct cart items,
+      // so dedupe by the serialized design, not by variant alone.
+      const existing = (existingList ?? []).find(
+        (row) => JSON.stringify(row.custom_design_data) === serializedDesign
+      );
+
+      if (existing) {
+        const newQty = existing.quantity + quantity;
+        const { data: updated, error: updateError } = await supabase
+          .from('cart_items')
+          .update({ quantity: newQty, total_price: unitPrice * newQty, updated_at: new Date().toISOString() })
+          .eq('id', existing.id)
+          .select('*, variant:variants(*, model:models(id,name,slug,brand:brands(id,name,slug)), product_type:product_types(id,name,slug,base_price))')
+          .single();
+
+        if (updateError) {
+          return NextResponse.json({ error: 'Failed to update cart item' }, { status: 500 });
+        }
+        return NextResponse.json({ cart_item: updated });
+      }
+
+      const { data: cartItem, error: insertError } = await supabase
+        .from('cart_items')
+        .insert({
+          user_id: user.id,
+          variant_id,
+          design_id: null,
+          model_id: variant.model_id,
+          product_type_id: variant.product_type_id,
+          custom_design_data: customization_options,
+          customization_options: customization_options ?? null,
+          quantity,
+          unit_price: unitPrice,
+          total_price: unitPrice * quantity,
+        })
+        .select('*, variant:variants(*, model:models(id,name,slug,brand:brands(id,name,slug)), product_type:product_types(id,name,slug,base_price))')
+        .single();
+
+      if (insertError) {
+        console.error('[Cart] Failed to insert custom variant:', insertError);
+        return NextResponse.json({ error: 'Failed to add custom item to cart' }, { status: 500 });
+      }
+      return NextResponse.json({ cart_item: cartItem }, { status: 201 });
+    }
+
     const { data: existing } = await supabase
       .from('cart_items')
       .select('id, quantity')

@@ -73,6 +73,8 @@ export interface CartItem {
     slug: string;
     base_price: number;
   } | null;
+  model_id?: string | null;
+  product_type_id?: string | null;
   name?: string | null;
   image_url?: string | null;
   created_at: string;
@@ -89,11 +91,22 @@ export interface GuestCartItem {
   variant_id?: string | null;
   design_id?: string | null;
   predesigned_product_id?: string | null;
+  model_id?: string | null;
+  product_type_id?: string | null;
   quantity: number;
   customization_options?: Record<string, unknown> | null;
   name: string;
   image_url?: string | null;
   unit_price: number;
+}
+
+export interface CartDrawerItem {
+  name: string;
+  image_url?: string | null;
+  subtitle?: string;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
 }
 
 interface CartContextType {
@@ -102,6 +115,9 @@ interface CartContextType {
   loading: boolean;
   error: string | null;
   isLoggedIn: boolean;
+  cartDrawerOpen: boolean;
+  cartDrawerItem: CartDrawerItem | null;
+  closeCartDrawer: () => void;
   addToCart: (variantId: string, designId?: string, quantity?: number, customization?: Record<string, unknown>, predesignedProductId?: string) => Promise<void>;
   updateCartItem: (itemId: string, quantity: number) => Promise<void>;
   removeFromCart: (itemId: string) => Promise<void>;
@@ -141,8 +157,8 @@ function guestSignature(item: Pick<GuestCartItem, 'variant_id' | 'design_id' | '
   ].join('|');
 }
 
-async function fetchGuestSnapshot(entry: { variant_id?: string | null; predesigned_product_id?: string | null }): Promise<{ name: string; image_url?: string | null; unit_price: number }> {
-  const fallback = { name: 'Phone Case', image_url: null as string | null, unit_price: 0 };
+async function fetchGuestSnapshot(entry: { variant_id?: string | null; predesigned_product_id?: string | null }): Promise<{ name: string; image_url?: string | null; unit_price: number; model_id?: string | null; product_type_id?: string | null }> {
+  const fallback = { name: 'Phone Case', image_url: null as string | null, unit_price: 0, model_id: null as string | null, product_type_id: null as string | null };
   try {
     if (entry.predesigned_product_id) {
       const res = await fetch(`/api/predesigned/${entry.predesigned_product_id}`);
@@ -155,6 +171,8 @@ async function fetchGuestSnapshot(entry: { variant_id?: string | null; predesign
         name,
         image_url: p.design_image_url || p.variant_image_url || null,
         unit_price: Number(p.final_price ?? 0),
+        model_id: p.model?.id ?? null,
+        product_type_id: p.product_type?.id ?? null,
       };
     }
     if (entry.variant_id) {
@@ -170,12 +188,34 @@ async function fetchGuestSnapshot(entry: { variant_id?: string | null; predesign
         name: [brand?.name, model?.name].filter(Boolean).join(' ') || v.name || 'Phone Case',
         image_url: v.image_url || null,
         unit_price: Number(productType?.base_price ?? 0) + Number(v.price_modifier ?? 0),
+        model_id: model?.id ?? null,
+        product_type_id: productType?.id ?? null,
       };
     }
   } catch {
     // best-effort snapshot
   }
   return fallback;
+}
+
+function buildDrawerItem(item: CartItem): CartDrawerItem {
+  const variant = item.variant;
+  const model = variant?.model ?? item.model;
+  const brand = model?.brand;
+  const productType = variant?.product_type ?? item.product_type;
+  const design = item.design;
+  const name = item.name || [brand?.name, model?.name].filter(Boolean).join(' ') || 'Phone Case';
+  const subtitle = [productType?.name, variant?.color_name, design ? `Design: ${design.name}` : ''].filter(Boolean).join(' · ');
+  const imageUrl = design?.thumbnail_url || design?.image_url || item.image_url;
+  const unitPrice = parseFloat(String(item.unit_price ?? 0));
+  return {
+    name,
+    image_url: imageUrl ?? null,
+    subtitle,
+    quantity: item.quantity ?? 1,
+    unit_price: unitPrice,
+    total_price: parseFloat(String(item.total_price ?? unitPrice * (item.quantity ?? 1))),
+  };
 }
 
 export function CartProvider({ children }: { children: ReactNode }) {
@@ -185,8 +225,19 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [guestItems, setGuestItems] = useState<GuestCartItem[]>([]);
+  const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
+  const [cartDrawerItem, setCartDrawerItem] = useState<CartDrawerItem | null>(null);
   const authKnownRef = useRef(false);
   const mergeInFlightRef = useRef(false);
+
+  const openCartDrawer = useCallback((item: CartDrawerItem) => {
+    setCartDrawerItem(item);
+    setCartDrawerOpen(true);
+  }, []);
+
+  const closeCartDrawer = useCallback(() => {
+    setCartDrawerOpen(false);
+  }, []);
 
   // Track auth state so the cart can choose DB vs localStorage storage
   useEffect(() => {
@@ -230,6 +281,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
         unit_price: g.unit_price,
         total_price: g.unit_price * g.quantity,
         customization_options: g.customization_options ?? null,
+        model_id: g.model_id ?? null,
+        product_type_id: g.product_type_id ?? null,
         name: g.name,
         image_url: g.image_url,
         created_at: '',
@@ -286,6 +339,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
       unit_price: g.unit_price,
       total_price: g.unit_price * g.quantity,
       customization_options: g.customization_options ?? null,
+      model_id: g.model_id ?? null,
+      product_type_id: g.product_type_id ?? null,
       name: g.name,
       image_url: g.image_url,
       created_at: '',
@@ -320,6 +375,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
           variant_id: variantId || null,
           design_id: designId ?? null,
           predesigned_product_id: predesignedProductId ?? null,
+          model_id: snapshot.model_id ?? null,
+          product_type_id: snapshot.product_type_id ?? null,
           quantity,
           customization_options: customization ?? null,
           name: snapshot.name,
@@ -330,8 +387,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
       persistGuestCart(next);
       setGuestItems(next);
       loadGuestCartState();
+      openCartDrawer({
+        name: snapshot.name,
+        image_url: snapshot.image_url,
+        quantity,
+        unit_price: snapshot.unit_price,
+        total_price: snapshot.unit_price * quantity,
+      });
     },
-    [loadGuestCartState]
+    [loadGuestCartState, openCartDrawer]
   );
 
   const updateGuestItem = useCallback(
@@ -445,13 +509,18 @@ export function CartProvider({ children }: { children: ReactNode }) {
           throw new Error(data.error || 'Failed to add to cart');
         }
 
+        const data = await response.json();
+        if (data.cart_item) {
+          openCartDrawer(buildDrawerItem(data.cart_item));
+        }
+
         await refreshCart();
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An unknown error occurred');
         throw err;
       }
     },
-    [isLoggedIn, addGuestItem, refreshCart]
+    [isLoggedIn, addGuestItem, refreshCart, openCartDrawer]
   );
 
   const updateCartItem = useCallback(
@@ -573,6 +642,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
     loading,
     error,
     isLoggedIn,
+    cartDrawerOpen,
+    cartDrawerItem,
+    closeCartDrawer,
     addToCart,
     updateCartItem,
     removeFromCart,

@@ -789,7 +789,6 @@ export function CustomizationEditor({
                   setError(null);
                   try {
                     await addToCart(variantId, undefined, 1, { elements });
-                    alert('Success! Your custom design has been saved and added to your cart.');
                   } catch {
                     setError('Failed to add custom design to cart. Please try again.');
                   } finally {

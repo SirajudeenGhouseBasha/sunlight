@@ -1,11 +1,13 @@
 'use client';
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { Pagination } from '@/src/components/admin/shared/Pagination';
 import { SearchBar } from '@/src/components/admin/shared/SearchBar';
 import { useToast } from '@/src/components/admin/shared/Toast';
 import { useDataTable } from '@/src/hooks/useDataTable';
 import { ProductionDataTable, Column } from '@/src/components/ui/productionDataTable';
+import { Download } from 'lucide-react';
+import { toProxiedUrl } from '@/src/utils/image-url';
 
 export interface AdminOrder {
   id: string;
@@ -35,6 +37,8 @@ export interface AdminOrder {
 
 interface OrderDetailProps {
   order: AdminOrder;
+  items: AdminOrderItem[];
+  itemsLoading: boolean;
   onClose: () => void;
   onVerify: (id: string) => Promise<void>;
   onShip: (id: string, trackingNumber: string) => Promise<void>;
@@ -44,7 +48,203 @@ interface OrderDetailProps {
   delivering: boolean;
 }
 
-function OrderDetailModal({ order, onClose, onVerify, onShip, onDeliver, verifying, shipping, delivering }: OrderDetailProps) {
+interface DesignElement {
+  type: 'image' | 'text';
+  id?: string;
+  src?: string;
+  content?: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  fontSize?: number;
+  color?: string;
+  fontFamily?: string;
+  contrast?: number;
+  brightness?: number;
+  saturate?: number;
+  flipX?: boolean;
+}
+
+export interface AdminOrderItem {
+  id: string;
+  variant_id?: string | null;
+  design_id?: string | null;
+  model_id?: string | null;
+  product_type_id?: string | null;
+  product_name: string;
+  variant_name: string;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
+  custom_design_data?: { elements?: DesignElement[] } | null;
+  customization_options?: { elements?: DesignElement[] } | null;
+  design?: {
+    id: string;
+    name: string;
+    image_url?: string | null;
+    thumbnail_url?: string | null;
+  } | null;
+  variant?: {
+    id: string;
+    name: string;
+    color_name?: string | null;
+    image_url?: string | null;
+    mask_image_url?: string | null;
+    model?: {
+      name: string;
+      mockup_template_url?: string | null;
+      brand?: { name: string } | null;
+    } | null;
+    product_type?: { name: string } | null;
+  } | null;
+  product_type?: { id: string; name: string; base_price?: string | number } | null;
+}
+
+const CANVAS_WIDTH = 340;
+const CANVAS_HEIGHT = 560;
+
+function CustomDesignPreview({
+  elements,
+  caseImageUrl,
+  maskImageUrl,
+}: {
+  elements: DesignElement[];
+  caseImageUrl?: string | null;
+  maskImageUrl?: string | null;
+}) {
+  const scale = 140 / CANVAS_WIDTH;
+  const width = CANVAS_WIDTH * scale;
+  const height = CANVAS_HEIGHT * scale;
+
+  return (
+    <div
+      className="relative rounded-lg overflow-hidden border border-gray-200 bg-gray-100 flex-shrink-0"
+      style={{ width, height }}
+    >
+      {caseImageUrl ? (
+        <img
+          src={caseImageUrl}
+          alt="Case mockup"
+          className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+          draggable={false}
+        />
+      ) : (
+        <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-b from-gray-200 to-gray-300">
+          <span className="text-4xl opacity-30">PH</span>
+        </div>
+      )}
+
+      {elements.map((el, i) => {
+        const pos = {
+          left: el.x * scale,
+          top: el.y * scale,
+          width: el.width * scale,
+          height: el.height * scale,
+        };
+        if (el.type === 'image' && el.src) {
+          return (
+            <img
+              key={el.id ?? i}
+              src={el.src}
+              alt={`Element ${i + 1}`}
+              className="absolute object-contain z-10"
+              style={{
+                ...pos,
+                filter: `contrast(${el.contrast ?? 100}%) brightness(${el.brightness ?? 100}%) saturate(${el.saturate ?? 100}%)`,
+                transform: el.flipX ? 'scaleX(-1)' : undefined,
+              }}
+            />
+          );
+        }
+        return (
+          <div
+            key={el.id ?? i}
+            className="absolute flex items-center justify-center overflow-hidden z-10"
+            style={{
+              ...pos,
+              fontSize: (el.fontSize ?? 20) * scale,
+              color: el.color ?? '#ffffff',
+              fontFamily: el.fontFamily ?? 'Inter, sans-serif',
+              textShadow: '0 1px 4px rgba(0,0,0,0.5)',
+              lineHeight: 1.2,
+              wordBreak: 'break-word',
+            }}
+          >
+            {el.content}
+          </div>
+        );
+      })}
+
+      {(maskImageUrl || caseImageUrl) && (
+        <img
+          src={maskImageUrl || caseImageUrl || ''}
+          alt="Case overlay mask"
+          className="absolute inset-0 w-full h-full object-cover pointer-events-none z-30"
+          style={{ mixBlendMode: maskImageUrl ? 'normal' : 'multiply' }}
+          draggable={false}
+        />
+      )}
+    </div>
+  );
+}
+
+function CustomDesignDetails({
+  elements,
+  caseImageUrl,
+  maskImageUrl,
+}: {
+  elements: DesignElement[];
+  caseImageUrl?: string | null;
+  maskImageUrl?: string | null;
+}) {
+  return (
+    <div className="mt-3 pt-3 border-t border-gray-200 flex gap-4">
+      <CustomDesignPreview
+        elements={elements}
+        caseImageUrl={caseImageUrl}
+        maskImageUrl={maskImageUrl}
+      />
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-semibold text-gray-700 mb-1.5">
+          Design Elements ({elements.length})
+        </p>
+        <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+          {elements.map((el, i) => (
+            <div key={el.id ?? i} className="bg-white rounded-md border border-gray-200 px-2.5 py-1.5 text-xs">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-medium text-gray-800 truncate">
+                  {el.type === 'text' ? `Text: ${el.content ?? ''}` : `Image ${i + 1}`}
+                </span>
+                {el.type === 'image' && el.src && (
+                  <a
+                    href={el.src}
+                    download={`element-${i + 1}.png`}
+                    className="text-green-600 hover:text-green-700 font-medium flex items-center gap-0.5 flex-shrink-0"
+                  >
+                    <Download className="w-3 h-3" /> Download
+                  </a>
+                )}
+              </div>
+              <p className="text-gray-500 mt-0.5 break-words">
+                X {Math.round(el.x)} · Y {Math.round(el.y)} · W {Math.round(el.width)} · H{' '}
+                {Math.round(el.height)}
+                {el.type === 'text' && el.fontSize ? ` · ${Math.round(el.fontSize)}px` : ''}
+                {el.type === 'text' && el.color ? ` · ${el.color}` : ''}
+                {el.type === 'text' && el.fontFamily ? ` · ${el.fontFamily.split(',')[0]}` : ''}
+                {el.type === 'image'
+                  ? ` · C ${el.contrast ?? 100}% · B ${el.brightness ?? 100}% · S ${el.saturate ?? 100}%${el.flipX ? ' · flipped' : ''}`
+                  : ''}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function OrderDetailModal({ order, items, itemsLoading, onClose, onVerify, onShip, onDeliver, verifying, shipping, delivering }: OrderDetailProps) {
   const [trackingNumber, setTrackingNumber] = useState(order.tracking_number || '');
 
   const statusDisplay = (status: string) => {
@@ -122,6 +322,69 @@ function OrderDetailModal({ order, onClose, onVerify, onShip, onDeliver, verifyi
                 <p className="text-green-600"><span className="text-gray-500">Verified at:</span> {new Date(order.verified_at).toLocaleString()}</p>
               )}
             </div>
+          </div>
+
+          {/* Order Items */}
+          <div>
+            <h3 className="font-semibold text-gray-900 mb-2">Order Items</h3>
+            {itemsLoading ? (
+              <div className="bg-gray-50 rounded-lg p-3 text-sm text-gray-500">Loading items...</div>
+            ) : items.length === 0 ? (
+              <div className="bg-gray-50 rounded-lg p-3 text-sm text-gray-500">No items</div>
+            ) : (
+              <div className="space-y-3">
+                {items.map((item) => {
+                  const elements =
+                    item.custom_design_data?.elements ?? item.customization_options?.elements ?? [];
+                  const isCustom = elements.length > 0;
+                  return (
+                    <div key={item.id} className="bg-gray-50 rounded-lg p-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="font-medium text-sm text-gray-900">
+                            {item.product_name || 'Phone Case'}
+                            {item.variant_name && item.variant_name !== 'Standard'
+                              ? ` (${item.variant_name})`
+                              : ''}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            {item.variant?.model?.brand?.name || item.variant?.model?.name
+                              ? `${item.variant?.model?.brand?.name ?? ''} ${item.variant?.model?.name ?? ''}`.trim()
+                              : item.variant?.name}
+                            {item.product_type?.name ? ` · ${item.product_type.name}` : ''}
+                            {item.design?.name ? ` · Design: ${item.design.name}` : ''}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            Qty {item.quantity} × ₹{parseFloat(String(item.unit_price)).toFixed(2)}
+                          </p>
+                        </div>
+                        <span className="font-semibold text-sm text-gray-900 flex-shrink-0">
+                          ₹{parseFloat(String(item.total_price ?? item.unit_price * item.quantity)).toFixed(2)}
+                        </span>
+                      </div>
+
+                      {isCustom && (
+                        <CustomDesignDetails
+                          elements={elements}
+                          caseImageUrl={toProxiedUrl(
+                            item.variant?.model?.mockup_template_url || item.variant?.image_url
+                          )}
+                          maskImageUrl={toProxiedUrl(item.variant?.mask_image_url)}
+                        />
+                      )}
+
+                      {!isCustom && item.design?.image_url && (
+                        <img
+                          src={item.design.image_url}
+                          alt={item.design.name}
+                          className="mt-2 max-h-32 rounded-lg border"
+                        />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Action 1: Verify Payment */}
@@ -255,9 +518,37 @@ export function OrdersModule() {
   });
 
   const [selectedOrder, setSelectedOrder] = useState<AdminOrder | null>(null);
+  const [orderItems, setOrderItems] = useState<AdminOrderItem[]>([]);
+  const [itemsLoading, setItemsLoading] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [shipping, setShipping] = useState(false);
   const [delivering, setDelivering] = useState(false);
+
+  useEffect(() => {
+    if (!selectedOrder) return;
+    let cancelled = false;
+    setItemsLoading(true);
+    setOrderItems([]);
+
+    fetch(`/api/admin/orders/${selectedOrder.id}`)
+      .then((response) => {
+        if (!response.ok) throw new Error('Failed to fetch order items');
+        return response.json();
+      })
+      .then((data) => {
+        if (!cancelled) setOrderItems(data.order_items || []);
+      })
+      .catch(() => {
+        if (!cancelled) setOrderItems([]);
+      })
+      .finally(() => {
+        if (!cancelled) setItemsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedOrder]);
 
   const handleVerify = useCallback(async (id: string) => {
     setVerifying(true);
@@ -468,6 +759,8 @@ export function OrdersModule() {
       {selectedOrder && (
         <OrderDetailModal
           order={selectedOrder}
+          items={orderItems}
+          itemsLoading={itemsLoading}
           onClose={() => setSelectedOrder(null)}
           onVerify={handleVerify}
           onShip={handleShip}

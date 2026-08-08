@@ -250,7 +250,7 @@ async function PredesignedProductDetails({ id }: { id: string }) {
 
           {/* Add to cart */}
           <div className="pt-2">
-            <ProductActions variantId={id} designId={id} isPredesigned={true} predesignedProductId={id} productName={product.name} />
+            <ProductActions variantId={id} designId={id} isPredesigned={true} predesignedProductId={id} />
           </div>
 
           {/* Product Details */}
@@ -285,7 +285,7 @@ async function PredesignedProductDetails({ id }: { id: string }) {
             <p className="text-lg font-bold text-gray-900">₹{typeof totalPrice === 'number' ? totalPrice.toFixed(2) : totalPrice}</p>
             {mrp > totalPrice && <p className="text-xs text-gray-500 line-through">₹{mrp.toFixed(2)}</p>}
           </div>
-          <ProductActions variantId={id} designId={id} isPredesigned={true} predesignedProductId={id} productName={product.name} />
+          <ProductActions variantId={id} designId={id} isPredesigned={true} predesignedProductId={id} />
         </div>
       </div>
       <div className="h-20 lg:hidden" />

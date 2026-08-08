@@ -104,14 +104,20 @@ export default function CheckoutPage() {
 
       if (!isLoggedIn) {
         // Pass guest cart items so the API can create the order without a user session
-        orderPayload.guest_cart_items = cartItems.map((item) => ({
-          variant_id: item.variant_id || null,
-          design_id: item.design_id || null,
-          quantity: item.quantity,
-          unit_price: item.unit_price,
-          model_id: (item.model as { id?: string } | null | undefined)?.id ?? null,
-          product_type_id: (item.product_type as { id?: string } | null | undefined)?.id ?? null,
-        }));
+        orderPayload.guest_cart_items = cartItems.map((item) => {
+          const elements = item.customization_options as { elements?: unknown[] } | null;
+          const hasElements =
+            !!elements && Array.isArray(elements.elements) && elements.elements.length > 0;
+          return {
+            variant_id: item.variant_id || null,
+            design_id: item.design_id || null,
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            model_id: (item.model as { id?: string } | null | undefined)?.id ?? item.model_id ?? null,
+            product_type_id: (item.product_type as { id?: string } | null | undefined)?.id ?? item.product_type_id ?? null,
+            custom_design_data: hasElements ? (item.customization_options as Record<string, unknown>) : null,
+          };
+        });
       }
 
       const response = await fetch('/api/orders', {

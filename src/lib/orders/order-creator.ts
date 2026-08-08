@@ -1,7 +1,7 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { StockManager } from '@/src/lib/products/stock-manager';
 import { getProductType } from '@/src/utils/product-type-discriminator';
-import { sendOrderStatusEmail } from '@/src/lib/email/service';
+import { sendOrderStatusEmail, sendAdminOrderNotification } from '@/src/lib/email/service';
 
 export interface CartItem {
   id: string;
@@ -174,7 +174,68 @@ export class OrderCreator {
       totalAmount: totalPrice,
     });
 
+    await this.notifyAdminsOfNewOrder(items, orderNumber, totalPrice, options);
+
     return { success: true, order_id: orderId };
+  }
+
+  /**
+   * Email every admin (users.role = 'admin' with an email) the details of a
+   * newly created order so the store owner can verify the payment.
+   * Never throws — failures only log.
+   */
+  private async notifyAdminsOfNewOrder(
+    items: CartItem[],
+    orderNumber: string,
+    totalPrice: number,
+    options: CreateOrderOptions
+  ): Promise<void> {
+    try {
+      const { data: admins } = await this.supabase
+        .from('users')
+        .select('email')
+        .eq('role', 'admin')
+        .not('email', 'is', null);
+
+      const adminEmails = (admins ?? [])
+        .map((a) => a.email as string | null)
+        .filter((e): e is string => !!e);
+
+      if (adminEmails.length === 0) return;
+
+      const namesMap = await this.fetchVariantNames(items);
+
+      const itemSummaries = items.map((item) => {
+        const names = (item.variant_id && namesMap[item.variant_id]) || {
+          product_name: 'Phone Case',
+          variant_name: 'Standard',
+        };
+        return {
+          name: names.product_name,
+          variant: names.variant_name,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+        };
+      });
+
+      await sendAdminOrderNotification(adminEmails, {
+        orderNumber,
+        customerName: options.customer_name,
+        customerPhone: options.customer_phone,
+        customerEmail: options.customer_email,
+        totalAmount: totalPrice,
+        paymentMethod: options.payment_method,
+        upiTransactionId: options.upi_transaction_id,
+        paymentScreenshotUrl: options.payment_screenshot_url,
+        items: itemSummaries,
+        shippingAddress: options.shipping_address,
+      });
+    } catch (e) {
+      console.error(
+        `[OrderCreator] Failed to notify admins of new order ${orderNumber}:`,
+        e
+      );
+    }
   }
 
   async validateStock(items: CartItem[]): Promise<string[]> {
@@ -196,11 +257,13 @@ export class OrderCreator {
     return errors;
   }
 
-  async createOrderItems(orderId: string, items: CartItem[]): Promise<string[]> {
-    const orderItemIds: string[] = [];
-    const decrementedVariants: Array<{ variant_id: string; quantity: number }> = [];
-
-    // Only fetch variant names for items that actually have a variant_id
+  /**
+   * Build a map of variant_id → display names for the given items.
+   * Items without a variant_id are excluded.
+   */
+  private async fetchVariantNames(
+    items: CartItem[]
+  ): Promise<Record<string, { product_name: string; variant_name: string }>> {
     const variantIds = items.map((i) => i.variant_id).filter((v): v is string => !!v);
     const variantNamesMap: Record<string, { product_name: string; variant_name: string }> = {};
 
@@ -231,6 +294,15 @@ export class OrderCreator {
         }
       }
     }
+
+    return variantNamesMap;
+  }
+
+  async createOrderItems(orderId: string, items: CartItem[]): Promise<string[]> {
+    const orderItemIds: string[] = [];
+    const decrementedVariants: Array<{ variant_id: string; quantity: number }> = [];
+
+    const variantNamesMap = await this.fetchVariantNames(items);
 
     for (const item of items) {
       const productType = getProductType(item);
