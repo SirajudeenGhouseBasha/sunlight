@@ -7,6 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/src/lib/supabase/server';
+import { sendOrderStatusEmail } from '@/src/lib/email/service';
 
 // GET /api/orders/[id] - Get order details
 export async function GET(
@@ -168,7 +169,26 @@ export async function PUT(
         { status: 500 }
       );
     }
-    
+
+    const emailKind =
+      status === 'PAID'
+        ? 'PAYMENT_VERIFIED'
+        : status === 'SHIPPED'
+          ? 'SHIPPED'
+          : status === 'DELIVERED'
+            ? 'DELIVERED'
+            : null;
+
+    if (emailKind && order) {
+      await sendOrderStatusEmail(emailKind, {
+        to: order.customer_email ?? '',
+        orderNumber: order.order_number,
+        customerName: order.customer_name,
+        totalAmount: order.total_amount,
+        trackingNumber: order.tracking_number,
+      });
+    }
+
     return NextResponse.json({ order });
   } catch (error) {
     return NextResponse.json(

@@ -24,7 +24,7 @@
 
 - The **only** live auth middleware is `sunlight/middleware.ts` (route protection, role checks, inactive-user redirect, session refresh). Edit this file.
 - `src/proxy.ts` is a **duplicate, dead implementation** — nothing imports it, and Next 15.5 runs `middleware.ts`, not `proxy.ts`. Changes there have no effect; prefer deleting it.
-- Route lists and roles live in `src/lib/auth/config.ts` (`authRoutes`, `userRoles`), consumed by `middleware.ts`.
+- The route matchers in `middleware.ts` (`publicRoutes`, `protectedRoutes`, `adminRoutes`, dynamic-route regex) are **hardcoded in that file** — add/remove routes there, not elsewhere. `src/lib/auth/config.ts` is only consulted for `userRoles` and `authRoutes.defaultRedirect`.
 
 ## Testing
 
@@ -47,5 +47,6 @@
 
 ## Env & infra
 
-- `.env.local` is present and required. Keys (see `.env.example`): Supabase `NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_ANON_KEY` + `SUPABASE_SECRET_KEY`/`SUPABASE_DB_PASSWORD`, AWS S3 creds (`AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_S3_BUCKET_NAME`, `NEXT_PUBLIC_S3_BUCKET_URL`), `NEXT_PUBLIC_SITE_URL`/`NEXT_PUBLIC_API_URL`.
-- Database migrations: `supabase/migrations/`, timestamp-prefixed SQL. Local config: `supabase/config.toml` (API 54321, DB 54322, Studio 54323). The Supabase CLI is linked to the remote project (`supabase/.temp/linked-project.json`, ref `bimolyuiboouvqgviztb`) and migration tracking is now fully in sync (all 28 migrations marked applied). **Normal workflow: add `<timestamp>_name.sql` to `supabase/migrations/`, then run `npx supabase db push`** (set `SUPABASE_DB_PASSWORD` in env or it will prompt for the remote DB password). `supabase migration repair --status applied <version>` is used to adopt pre-existing schema; `supabase db reset` only affects a local stack.
+- `.env.local` is present and required. Keys (see `.env.example`): Supabase `NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_ANON_KEY` + `SUPABASE_SECRET_KEY`/`SUPABASE_DB_PASSWORD`, AWS S3 creds (`AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_S3_BUCKET_NAME`, `NEXT_PUBLIC_S3_BUCKET_URL`), `NEXT_PUBLIC_SITE_URL`/`NEXT_PUBLIC_API_URL`, email `RESEND_API_KEY`/`EMAIL_FROM`.
+- **Order status emails** (Resend): `src/lib/email/service.ts` sends a notification on every status change (order placed → `PENDING_PAYMENT`, payment verified → `PAID`, shipped → `SHIPPED` with tracking number, delivered → `DELIVERED`) to the order's `customer_email`. Never throws; silently skips when `RESEND_API_KEY` is unset. New status transitions must call `sendOrderStatusEmail` (see `api/admin/orders/route.ts`, `api/orders/[id]/route.ts`, `lib/orders/order-creator.ts`).
+- Database migrations: `supabase/migrations/`, timestamp-prefixed SQL. Local config: `supabase/config.toml` (API 54321, DB 54322, Studio 54323). The Supabase CLI is linked to the remote project (`supabase/.temp/linked-project.json`, ref `bimolyuiboouvqgviztb`). **Normal workflow: add `<timestamp>_name.sql` to `supabase/migrations/`, then run `npx supabase db push`** (set `SUPABASE_DB_PASSWORD` in env or it will prompt for the remote DB password). `supabase migration repair --status applied <version>` is used to adopt pre-existing schema; `supabase db reset` only affects a local stack. Check remote-vs-local state with `npx supabase migration list` (queries the remote DB, needs the password too).

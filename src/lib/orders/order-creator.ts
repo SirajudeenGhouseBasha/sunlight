@@ -1,6 +1,7 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { StockManager } from '@/src/lib/products/stock-manager';
 import { getProductType } from '@/src/utils/product-type-discriminator';
+import { sendOrderStatusEmail } from '@/src/lib/email/service';
 
 export interface CartItem {
   id: string;
@@ -165,6 +166,13 @@ export class OrderCreator {
     }
 
     await this.clearCart(userId);
+
+    await sendOrderStatusEmail('ORDER_PLACED', {
+      to: options.customer_email ?? '',
+      orderNumber,
+      customerName: options.customer_name,
+      totalAmount: totalPrice,
+    });
 
     return { success: true, order_id: orderId };
   }

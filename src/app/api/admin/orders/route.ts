@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/src/lib/supabase/server';
+import { sendOrderStatusEmail } from '@/src/lib/email/service';
 
 export async function GET(request: NextRequest) {
   try {
@@ -142,6 +143,25 @@ export async function PATCH(request: NextRequest) {
 
     if (error) {
       return NextResponse.json({ error: 'Failed to update order' }, { status: 500 });
+    }
+
+    const emailKind =
+      action === 'verify-payment'
+        ? 'PAYMENT_VERIFIED'
+        : action === 'add-tracking'
+          ? 'SHIPPED'
+          : action === 'mark-delivered'
+            ? 'DELIVERED'
+            : null;
+
+    if (emailKind && order) {
+      await sendOrderStatusEmail(emailKind, {
+        to: order.customer_email ?? '',
+        orderNumber: order.order_number,
+        customerName: order.customer_name,
+        totalAmount: order.total_amount,
+        trackingNumber: order.tracking_number,
+      });
     }
 
     return NextResponse.json({ order });
