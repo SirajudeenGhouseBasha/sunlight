@@ -336,17 +336,17 @@ export default function CheckoutPage() {
                       </div>
                     )}
                     <div className="space-y-2 text-xs sm:text-sm bg-white rounded-lg p-3">
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">UPI ID:</span>
-                        <span className="font-mono font-semibold text-gray-900">{upiConfig?.upi_id || 'sunlightcases@upi'}</span>
+                      <div className="flex justify-between gap-3">
+                        <span className="text-gray-500 shrink-0">UPI ID:</span>
+                        <span className="font-mono font-semibold text-gray-900 break-all text-right">{upiConfig?.upi_id || 'sunlightcases@upi'}</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">Phone:</span>
-                        <span className="font-mono font-semibold text-gray-900">{upiConfig?.phone || '+919999999999'}</span>
+                      <div className="flex justify-between gap-3">
+                        <span className="text-gray-500 shrink-0">Phone:</span>
+                        <span className="font-mono font-semibold text-gray-900 break-all text-right">{upiConfig?.phone || '+919999999999'}</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">Merchant:</span>
-                        <span className="font-semibold text-gray-900">{upiConfig?.merchant_name || 'Sunlight Cases'}</span>
+                      <div className="flex justify-between gap-3">
+                        <span className="text-gray-500 shrink-0">Merchant:</span>
+                        <span className="font-semibold text-gray-900 break-all text-right">{upiConfig?.merchant_name || 'Sunlight Cases'}</span>
                       </div>
                     </div>
                   </div>

@@ -170,7 +170,7 @@ export default function CreateDesignPage() {
         {/* Back Button */}
         <Link 
           href="/dashboard/designs"
-          className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-black mb-6"
+          className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-black mb-6 py-2"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to Designs

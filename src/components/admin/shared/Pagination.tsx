@@ -43,7 +43,7 @@ export function Pagination({
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        'px-3 py-2 text-sm font-medium rounded-lg border transition-colors min-h-[36px]',
+        'px-3 py-2 text-sm font-medium rounded-lg border transition-colors min-h-11',
         disabled
           ? 'border-gray-200 text-gray-300 cursor-not-allowed bg-white'
           : 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50 active:bg-gray-100',

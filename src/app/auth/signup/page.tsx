@@ -173,6 +173,7 @@ export default function SignupPage() {
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 disabled={isLoading}
+                className="h-12"
               />
             </div>
 
@@ -186,6 +187,7 @@ export default function SignupPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 disabled={isLoading}
+                className="h-12"
               />
             </div>
             
@@ -200,6 +202,7 @@ export default function SignupPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   disabled={isLoading}
+                  className="h-12"
                 />
                 <button
                   type="button"
@@ -259,6 +262,7 @@ export default function SignupPage() {
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
                   disabled={isLoading}
+                  className="h-12"
                 />
                 <button
                   type="button"
@@ -302,7 +306,7 @@ export default function SignupPage() {
 
             <Button
               type="submit"
-              className="w-full"
+              className="w-full h-12"
               loading={isLoading}
               loadingText="Creating account..."
               disabled={

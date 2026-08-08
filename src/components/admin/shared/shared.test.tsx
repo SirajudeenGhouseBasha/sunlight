@@ -225,8 +225,8 @@ describe('Pagination Component', () => {
     );
 
     // Check for pagination elements
-    expect(screen.getByText('Showing')).toBeInTheDocument();
-    expect(screen.getByText('50')).toBeInTheDocument();
+    expect(screen.getByText(/Showing/)).toBeInTheDocument();
+    expect(screen.getAllByText('50').length).toBeGreaterThan(0);
     
     // Check for page navigation buttons
     const prevButtons = screen.getAllByText('Previous');
@@ -305,7 +305,7 @@ describe('Pagination Component', () => {
     );
 
     const prevButtons = screen.getAllByText('Previous');
-    fireEvent.click(prevButtons[1]); // Click the desktop version
+    fireEvent.click(prevButtons[0]);
 
     expect(onPageChange).toHaveBeenCalledWith(1);
   });
@@ -324,7 +324,7 @@ describe('Pagination Component', () => {
     );
 
     const nextButtons = screen.getAllByText('Next');
-    fireEvent.click(nextButtons[1]); // Click the desktop version
+    fireEvent.click(nextButtons[0]);
 
     expect(onPageChange).toHaveBeenCalledWith(2);
   });
@@ -398,7 +398,7 @@ describe('Modal Component', () => {
 
     const backdrop = container.querySelector('.fixed.inset-0');
     expect(backdrop).toBeInTheDocument();
-    expect(backdrop).toHaveClass('flex', 'items-center', 'justify-center');
+    expect(backdrop).toHaveClass('flex', 'items-end', 'sm:items-center', 'justify-center');
   });
 
   it('should close when backdrop is clicked', () => {
@@ -469,7 +469,7 @@ describe('Modal Component', () => {
       </Modal>
     );
 
-    const smModal = smContainer.querySelector('.max-w-md');
+    const smModal = smContainer.querySelector('.sm\\:max-w-md');
     expect(smModal).toBeInTheDocument();
   });
 

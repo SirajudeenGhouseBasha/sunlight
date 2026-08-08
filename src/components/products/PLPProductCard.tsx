@@ -78,7 +78,7 @@ export const PLPProductCard = memo(function PLPProductCard({
 
           <button
             onClick={handleWishlist}
-            className="absolute top-2 right-2 w-7 h-7 flex items-center justify-center rounded-full bg-white/80 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-white"
+            className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center rounded-full bg-white/80 backdrop-blur-sm opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200 hover:bg-white"
             aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
           >
             <Heart
@@ -117,7 +117,7 @@ export const PLPProductCard = memo(function PLPProductCard({
         <button
           onClick={handleAddToCart}
           disabled={!product.in_stock || isAddingToCart}
-          className="flex-1 h-8 flex items-center justify-center gap-1.5 text-xs font-medium rounded-lg bg-neutral-900 text-white hover:bg-neutral-800 disabled:bg-neutral-200 disabled:text-neutral-400 disabled:cursor-not-allowed transition-colors duration-150 active:scale-[0.97]"
+          className="flex-1 h-9 flex items-center justify-center gap-1.5 text-xs font-medium rounded-lg bg-neutral-900 text-white hover:bg-neutral-800 disabled:bg-neutral-200 disabled:text-neutral-400 disabled:cursor-not-allowed transition-colors duration-150 active:scale-[0.97]"
         >
           {isAddingToCart ? (
             <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />

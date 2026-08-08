@@ -65,7 +65,7 @@ export default function OrdersPage() {
               <p className="text-xs sm:text-sm text-gray-500 mt-0.5">Track and manage your orders</p>
             </div>
             <Link href="/">
-              <Button variant="outline" size="sm" className="text-xs sm:text-sm">← Home</Button>
+              <Button variant="outline" size="sm" className="text-xs sm:text-sm h-10">← Home</Button>
             </Link>
           </div>
         </div>

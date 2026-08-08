@@ -75,10 +75,10 @@ export default async function TrackOrderPage() {
                             })}
                           </p>
                         </div>
-                        <div className="text-right">
+                        <div className="text-right min-w-0">
                           <p className="font-bold text-gray-900">₹{parseFloat(order.total_amount.toString()).toFixed(2)}</p>
                           {order.tracking_number && (
-                            <p className="text-xs text-blue-600 mt-1">Track: {order.tracking_number}</p>
+                            <p className="text-xs text-blue-600 mt-1 break-all">Track: {order.tracking_number}</p>
                           )}
                         </div>
                       </div>

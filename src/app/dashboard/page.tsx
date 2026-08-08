@@ -24,13 +24,13 @@ export default async function DashboardPage() {
             </div>
             <div className="flex items-center gap-2">
               <Link href="/profile">
-                <Button variant="outline" size="sm" className="text-xs sm:text-sm h-9 gap-1.5">
+                <Button variant="outline" size="sm" className="text-xs sm:text-sm h-10 gap-1.5">
                   <User className="w-3.5 h-3.5" />
                   <span className="hidden sm:inline">Profile</span>
                 </Button>
               </Link>
               <form action="/auth/logout" method="post">
-                <Button variant="outline" size="sm" type="submit" className="text-xs sm:text-sm h-9 gap-1.5">
+                <Button variant="outline" size="sm" type="submit" className="text-xs sm:text-sm h-10 gap-1.5">
                   <LogOut className="w-3.5 h-3.5" />
                   <span className="hidden sm:inline">Sign Out</span>
                 </Button>

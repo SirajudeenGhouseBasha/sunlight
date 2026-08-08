@@ -80,7 +80,7 @@ export default function AdminPanelPage() {
   return (
     <ToastProvider>
       {/* Full-height flex container */}
-      <div className="flex h-screen overflow-hidden bg-gray-50">
+      <div className="flex h-dvh overflow-hidden bg-gray-50">
 
         {/* Sidebar (desktop fixed + mobile drawer) */}
         <AdminSidebar

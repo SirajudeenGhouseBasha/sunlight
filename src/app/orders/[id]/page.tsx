@@ -157,7 +157,7 @@ export default function OrderDetailsPage() {
               </p>
             </div>
             <Link href="/orders">
-              <Button variant="outline" size="sm">← All Orders</Button>
+              <Button variant="outline" size="sm" className="h-10">← All Orders</Button>
             </Link>
           </div>
         </div>
@@ -201,14 +201,14 @@ export default function OrderDetailsPage() {
                   );
                 })}
               </div>
-              <div className="mt-4 flex items-center justify-between">
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
                 <span className="text-xs text-gray-500">
                   {new Date(order.created_at).toLocaleDateString('en-IN', {
                     day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
                   })}
                 </span>
                 {order.tracking_number && (
-                  <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                  <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded break-all">
                     Tracking: {order.tracking_number}
                   </span>
                 )}
@@ -253,9 +253,9 @@ export default function OrderDetailsPage() {
                     <span className="font-medium text-gray-900">UPI</span>
                   </div>
                   {order.upi_transaction_id && (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Transaction ID</span>
-                      <span className="font-mono font-medium text-gray-900">{order.upi_transaction_id}</span>
+                    <div className="flex justify-between text-sm gap-3">
+                      <span className="text-gray-600 shrink-0">Transaction ID</span>
+                      <span className="font-mono font-medium text-gray-900 break-all text-right">{order.upi_transaction_id}</span>
                     </div>
                   )}
                   <div className="flex justify-between text-sm">

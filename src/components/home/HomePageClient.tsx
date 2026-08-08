@@ -344,7 +344,7 @@ function StatCard({ value, suffix, label, delay }: StatCardProps) {
         WebkitBackdropFilter: 'blur(20px)',
       }}>
         <div style={{
-          fontSize: 42, fontWeight: 900, lineHeight: 1, marginBottom: 8, color: '#000',
+          fontSize: 'clamp(30px, 9vw, 42px)', fontWeight: 900, lineHeight: 1, marginBottom: 8, color: '#000',
         }}>
           {count}{suffix}
         </div>
@@ -527,9 +527,6 @@ export function HomePageClientAdvanced({
         }
 
         @media (max-width: 640px) {
-          .home-grid { grid-template-columns: repeat(2, 1fr) !important; }
-          .home-grid-shop-type { grid-template-columns: repeat(2, 1fr) !important; }
-          .home-grid-stats { grid-template-columns: repeat(2, 1fr) !important; }
           .home-grid-footer { grid-template-columns: repeat(2, 1fr) !important; gap: 32px !important; }
         }
       `}</style>
@@ -828,7 +825,7 @@ export function HomePageClientAdvanced({
           <div style={{ fontSize: 12, color: '#999', letterSpacing: 4, textTransform: 'uppercase', fontWeight: 700, marginBottom: 16 }}>
             BESTSELLERS
           </div>
-          <h2 style={{ fontSize: 48, fontWeight: 900, letterSpacing: -2, lineHeight: 1.1, color: '#000' }}>
+          <h2 style={{ fontSize: 'clamp(32px, 8vw, 48px)', fontWeight: 900, letterSpacing: -2, lineHeight: 1.1, color: '#000' }}>
             Cases Everyone&apos;s<br />
             <span style={{ background: 'linear-gradient(135deg, #000, #666)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
               Talking About
@@ -866,7 +863,7 @@ export function HomePageClientAdvanced({
 
       {/* ─── SHOP BY BRAND ─── */}
       <section style={{
-        padding: '80px 40px',
+        padding: 'clamp(50px, 9vw, 80px) clamp(20px, 5vw, 40px)',
         background: 'transparent',
         borderBottom: '1px solid rgba(0,0,0,0.05)',
       }}>
@@ -880,7 +877,7 @@ export function HomePageClientAdvanced({
             <div style={{ fontSize: 12, color: '#999', letterSpacing: 4, textTransform: 'uppercase', fontWeight: 700, marginBottom: 16 }}>
               SHOP BY BRAND
             </div>
-            <h2 style={{ fontSize: 36, fontWeight: 900, letterSpacing: -1, lineHeight: 1.1, color: '#000' }}>
+            <h2 style={{ fontSize: 'clamp(28px, 7vw, 36px)', fontWeight: 900, letterSpacing: -1, lineHeight: 1.1, color: '#000' }}>
               Explore Our Partners
             </h2>
           </motion.div>
@@ -951,7 +948,7 @@ export function HomePageClientAdvanced({
 
       {/* ─── TESTIMONIALS ─── */}
       <section style={{
-        padding: '100px 40px',
+        padding: 'clamp(60px, 10vw, 100px) clamp(20px, 5vw, 40px)',
         background: 'transparent',
         borderBottom: '1px solid rgba(0,0,0,0.05)',
       }}>
@@ -965,7 +962,7 @@ export function HomePageClientAdvanced({
             <div style={{ fontSize: '12px', color: '#999', fontWeight: '500', letterSpacing: '1px', marginBottom: '16px', textTransform: 'uppercase' }}>
               CUSTOMER LOVE
             </div>
-            <h2 style={{ fontSize: '48px', fontWeight: '900', lineHeight: '1.1', letterSpacing: '-1.5px', color: '#000' }}>
+            <h2 style={{ fontSize: 'clamp(32px, 8vw, 48px)', fontWeight: '900', lineHeight: '1.1', letterSpacing: '-1.5px', color: '#000' }}>
               What People Say
             </h2>
           </motion.div>
@@ -1099,7 +1096,7 @@ export function HomePageClientAdvanced({
         whileInView={{ opacity: 1 }}
         transition={{ duration: 0.6 }}
         style={{
-          padding: '120px 40px',
+          padding: 'clamp(70px, 12vw, 120px) clamp(20px, 5vw, 40px)',
           position: 'relative',
           overflow: 'hidden',
           borderTop: '1px solid rgba(0, 0, 0, 0.05)',
@@ -1122,7 +1119,7 @@ export function HomePageClientAdvanced({
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
             style={{
-              fontSize: 56,
+              fontSize: 'clamp(36px, 10vw, 56px)',
               fontWeight: 900,
               letterSpacing: -2,
               lineHeight: 1.1,
@@ -1172,7 +1169,7 @@ export function HomePageClientAdvanced({
         initial={{ opacity: 0 }}
         whileInView={{ opacity: 1 }}
         style={{
-          padding: '60px 40px',
+          padding: 'clamp(40px, 8vw, 60px) clamp(20px, 5vw, 40px)',
           borderTop: '1px solid rgba(0, 0, 0, 0.05)',
           background: 'transparent',
         }}
@@ -1230,6 +1227,8 @@ export function HomePageClientAdvanced({
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '12px',
             }}
           >
             <div>

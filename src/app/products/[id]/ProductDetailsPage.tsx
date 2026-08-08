@@ -363,7 +363,7 @@ async function ProductDetails({ id, isCustomizing }: { id: string; isCustomizing
             )}
 
             {/* Seller Info */}
-            <div className="flex items-center gap-4 text-xs sm:text-sm text-gray-600">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs sm:text-sm text-gray-600">
               <div className="flex items-center gap-1.5">
                 <ShieldCheck className="w-4 h-4 text-green-600" />
                 <span>1 Year Warranty</span>
@@ -379,7 +379,7 @@ async function ProductDetails({ id, isCustomizing }: { id: string; isCustomizing
             </div>
 
             {/* Action Buttons */}
-            <div className="pt-2">
+            <div className="pt-2 hidden lg:block">
               <ProductActions variantId={id} />
             </div>
 
@@ -422,19 +422,19 @@ async function ProductDetails({ id, isCustomizing }: { id: string; isCustomizing
 
         {/* Mobile Sticky Add to Cart */}
         <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 p-3 lg:hidden">
-          <div className="flex items-center justify-between max-w-lg mx-auto">
-            <div>
+          <div className="flex items-center gap-3 max-w-lg mx-auto">
+            <div className="shrink-0">
               <p className="text-lg font-bold text-gray-900">₹{typeof totalPrice === 'number' ? totalPrice.toFixed(2) : totalPrice}</p>
               {mrp > totalPrice && (
                 <p className="text-xs text-gray-500 line-through">₹{mrp.toFixed(2)}</p>
               )}
             </div>
-            <div className="flex gap-2">
-              <ProductActions variantId={id} />
+            <div className="flex-1">
+              <ProductActions variantId={id} compact />
             </div>
           </div>
         </div>
-        <div className="h-20 lg:hidden" />
+        <div className="h-24 lg:hidden" />
       </>
     )
   } catch (error) {

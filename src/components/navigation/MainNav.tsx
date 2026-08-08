@@ -451,6 +451,11 @@ export function MainNav() {
             padding: 0.5rem;
           }
 
+          .nav-toggle {
+            width: 2.75rem;
+            height: 2.75rem;
+          }
+
           .nav-container {
             padding: 0.5rem 0.75rem;
             border-radius: 40px;

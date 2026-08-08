@@ -11,9 +11,11 @@ interface ProductActionsProps {
   designId?: string;
   isPredesigned?: boolean;
   predesignedProductId?: string;
+  /** Compact horizontal layout for the mobile sticky bar */
+  compact?: boolean;
 }
 
-export function ProductActions({ variantId, designId, isPredesigned = false, predesignedProductId }: ProductActionsProps) {
+export function ProductActions({ variantId, designId, isPredesigned = false, predesignedProductId, compact = false }: ProductActionsProps) {
   const router = useRouter();
   const { addToCart, refreshCart, loading: cartLoading } = useCart();
   const [adding, setAdding] = useState(false);
@@ -54,10 +56,12 @@ export function ProductActions({ variantId, designId, isPredesigned = false, pre
           {error}
         </div>
       )}
-      <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+      <div className={compact ? "flex items-center gap-2" : "flex flex-col sm:flex-row gap-2 sm:gap-3"}>
         <Button
           size="lg"
-          className="flex-1 h-12 sm:h-14 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm sm:text-base gap-2 shadow-sm"
+          className={compact
+            ? "flex-1 h-11 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm gap-2 shadow-sm"
+            : "flex-1 h-12 sm:h-14 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm sm:text-base gap-2 shadow-sm"}
           onClick={handleAddToCart}
           disabled={isLoading}
         >
@@ -70,7 +74,9 @@ export function ProductActions({ variantId, designId, isPredesigned = false, pre
         </Button>
         <Button
           size="lg"
-          className="flex-1 h-12 sm:h-14 bg-orange-500 hover:bg-orange-600 text-white font-semibold text-sm sm:text-base gap-2 shadow-sm"
+          className={compact
+            ? "flex-1 h-11 bg-orange-500 hover:bg-orange-600 text-white font-semibold text-sm gap-2 shadow-sm"
+            : "flex-1 h-12 sm:h-14 bg-orange-500 hover:bg-orange-600 text-white font-semibold text-sm sm:text-base gap-2 shadow-sm"}
           onClick={handleBuyNow}
           disabled={isLoading}
         >
@@ -82,7 +88,7 @@ export function ProductActions({ variantId, designId, isPredesigned = false, pre
           {buying ? 'Processing...' : 'Buy Now'}
         </Button>
       </div>
-      {!isPredesigned && (
+      {!isPredesigned && !compact && (
         <a href={`/products/${variantId}?customize=true`} className="block">
           <Button
             variant="outline"

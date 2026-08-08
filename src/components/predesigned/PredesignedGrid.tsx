@@ -135,7 +135,7 @@ function PredesignedCard({ product, index }: { product: PredesignedProduct; inde
             {/* Action Buttons */}
             <div className={`absolute top-3 right-3 flex flex-col gap-2 transition-opacity duration-200 ${
               isHovered ? 'opacity-100' : 'opacity-0'
-            }`}>
+            } md:opacity-0 md:group-hover:opacity-100`}>
               <button
                 onClick={handleLike}
                 className={`p-2 rounded-full backdrop-blur-sm transition-colors ${
@@ -157,7 +157,7 @@ function PredesignedCard({ product, index }: { product: PredesignedProduct; inde
             {/* Quick Add Button */}
             <div className={`absolute bottom-3 left-3 right-3 transition-all duration-200 ${
               isHovered ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'
-            }`}>
+            } md:opacity-0 md:translate-y-2 md:group-hover:opacity-100 md:group-hover:translate-y-0`}>
               <button
                 onClick={handleAddToCart}
                 disabled={!product.in_stock || adding}
@@ -189,7 +189,7 @@ function PredesignedCard({ product, index }: { product: PredesignedProduct; inde
             </div>
 
             {/* Color and Category */}
-            <div className="flex items-center gap-2 mb-3">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mb-3">
               {product.color_hex && (
                 <div 
                   className="w-4 h-4 rounded-full border border-gray-200"
@@ -221,11 +221,11 @@ function PredesignedCard({ product, index }: { product: PredesignedProduct; inde
             )}
 
             {/* Price */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-1">
               <span className="text-lg font-bold text-gray-900">
                 ₹{product.price.toFixed(2)}
               </span>
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-gray-500 hidden sm:inline">
                 Stock: {product.stock_quantity}
               </span>
             </div>

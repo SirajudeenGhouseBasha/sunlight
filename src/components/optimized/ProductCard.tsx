@@ -53,7 +53,7 @@ export const ProductCard = memo<ProductCardProps>(({
           </h3>
         </Link>
         
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <span className="text-lg font-bold text-green-600">
             ₹{product.price.toFixed(2)}
           </span>
@@ -62,7 +62,7 @@ export const ProductCard = memo<ProductCardProps>(({
             <Button 
               size="sm" 
               onClick={handleAddToCart}
-              className="text-xs"
+              className="text-xs h-10"
             >
               Add to Cart
             </Button>

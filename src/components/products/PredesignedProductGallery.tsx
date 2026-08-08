@@ -150,7 +150,7 @@ function ProductCard({ product }: { product: PredesignedProduct }) {
         </div>
 
         {/* Price + CTA */}
-        <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+        <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
           <span style={{ fontSize: 18, fontWeight: 800, color: '#111' }}>
             ₹{price.toFixed(2)}
           </span>
@@ -238,11 +238,6 @@ export function PredesignedProductGallery({ featuredOnly = false, limit = 20, sh
 
   return (
     <div>
-      <style>{`
-        @media (max-width: 640px) {
-          .gallery-grid { grid-template-columns: repeat(2, 1fr) !important; }
-        }
-      `}</style>
       <div className="gallery-grid" style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',

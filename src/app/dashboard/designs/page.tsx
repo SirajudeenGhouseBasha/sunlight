@@ -152,7 +152,7 @@ export default function DesignsPage() {
               <p className="text-sm text-gray-600 mt-1">Upload & manage designs</p>
             </div>
             <Link href="/dashboard">
-              <Button variant="outline" size="sm">← Back</Button>
+              <Button variant="outline" size="sm" className="h-10">← Back</Button>
             </Link>
           </div>
         </div>

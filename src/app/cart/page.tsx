@@ -121,7 +121,7 @@ export default function CartPage() {
       {/* Header */}
       <header className="bg-white border-b sticky top-0 z-20">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center gap-3">
-          <button onClick={() => router.back()} className="p-1 -ml-1 rounded-lg hover:bg-gray-100 transition-colors">
+          <button onClick={() => router.back()} className="p-2 -ml-2 rounded-lg hover:bg-gray-100 transition-colors">
             <ArrowLeft className="w-5 h-5 text-gray-600" />
           </button>
           <h1 className="font-bold text-gray-900 text-base flex-1">
@@ -203,7 +203,7 @@ export default function CartPage() {
                       </div>
                       <button
                         onClick={() => handleRemove(item.id)}
-                        className="shrink-0 p-1.5 rounded-lg hover:bg-red-50 text-gray-300 hover:text-red-500 transition-colors"
+                        className="shrink-0 p-2 rounded-lg hover:bg-red-50 text-gray-300 hover:text-red-500 transition-colors"
                         aria-label="Remove item"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -216,16 +216,16 @@ export default function CartPage() {
                         <button
                           onClick={() => handleQty(item.id, item.quantity - 1)}
                           disabled={item.quantity <= 1}
-                          className="w-8 h-8 flex items-center justify-center hover:bg-gray-50 disabled:opacity-30 transition-colors"
+                          className="w-9 h-9 flex items-center justify-center hover:bg-gray-50 disabled:opacity-30 transition-colors"
                         >
                           <Minus className="w-3 h-3" />
                         </button>
-                        <span className="w-8 text-center text-sm font-medium border-x border-gray-200 h-8 flex items-center justify-center">
+                        <span className="w-9 text-center text-sm font-medium border-x border-gray-200 h-9 flex items-center justify-center">
                           {item.quantity}
                         </span>
                         <button
                           onClick={() => handleQty(item.id, item.quantity + 1)}
-                          className="w-8 h-8 flex items-center justify-center hover:bg-gray-50 transition-colors"
+                          className="w-9 h-9 flex items-center justify-center hover:bg-gray-50 transition-colors"
                         >
                           <Plus className="w-3 h-3" />
                         </button>

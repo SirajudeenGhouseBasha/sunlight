@@ -232,6 +232,18 @@
         flex: 1;
         min-height: 100%;
         width: 100%;
+        /* Reserve space for the fixed floating navbar so page headers are never covered */
+        padding-top: clamp(5.75rem, 9vw, 7.5rem);
+    }
+
+    /* Pages that hide the navbar (auth, admin) need no offset */
+    body.no-main-nav .sunlight-atmosphere__content {
+        padding-top: 0;
+    }
+
+    /* The home hero is designed full-bleed under the floating pill */
+    .sunlight-home {
+        margin-top: calc(-1 * clamp(5.75rem, 9vw, 7.5rem));
     }
 }
 
@@ -255,6 +267,7 @@
         -moz-osx-font-smoothing: grayscale;
         font-size: 16px;
         background-color: var(--sunlight-base);
+        overflow-x: clip;
     }
 
     body {
@@ -266,6 +279,7 @@
         font-size: 0.875rem;
         font-weight: 400;
         background-color: var(--sunlight-base);
+        overflow-x: clip;
     }
     
     /* Typography */

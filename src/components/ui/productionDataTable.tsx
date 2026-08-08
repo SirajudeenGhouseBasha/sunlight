@@ -330,7 +330,7 @@ const TableRow = memo(
               {onEdit && (
                 <button
                   onClick={() => onEdit(item, index)}
-                  className="inline-flex items-center justify-center w-8 h-8 rounded bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors"
+                  className="inline-flex items-center justify-center w-10 h-10 rounded bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors"
                   aria-label={`Edit row ${index + 1}`}
                   title="Edit"
                 >
@@ -340,7 +340,7 @@ const TableRow = memo(
               {onDelete && (
                 <button
                   onClick={() => onDelete(item, index)}
-                  className="inline-flex items-center justify-center w-8 h-8 rounded bg-red-100 text-red-600 hover:bg-red-200 transition-colors"
+                  className="inline-flex items-center justify-center w-10 h-10 rounded bg-red-100 text-red-600 hover:bg-red-200 transition-colors"
                   aria-label={`Delete row ${index + 1}`}
                   title="Delete"
                 >

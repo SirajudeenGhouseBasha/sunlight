@@ -515,7 +515,7 @@ export function CustomizationEditor({
               </div>
 
               {/* Action buttons row */}
-              <div className="bg-white rounded-xl shadow-lg border border-gray-100 px-6 py-3 flex gap-8 items-center justify-center z-50">
+              <div className="bg-white rounded-xl shadow-lg border border-gray-100 px-3 sm:px-6 py-3 flex flex-wrap gap-4 sm:gap-8 items-center justify-center z-50">
                 <ToolbarButton icon={<FlipHorizontal className="w-5 h-5" />} label="Transform" onClick={handleTransform} />
                 <ToolbarButton icon={<Maximize className="w-5 h-5" />} label="Position" onClick={handlePosition} />
                 <ToolbarButton icon={<RotateCcw className="w-5 h-5" />} label="Reset" onClick={handleReset} />
