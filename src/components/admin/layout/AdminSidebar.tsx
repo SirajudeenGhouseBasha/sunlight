@@ -2,78 +2,88 @@
 
 import React, { useEffect } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { cn } from '@/src/lib/utils';
 import {
   LayoutDashboard,
   ShoppingCart,
+  Factory,
+  Printer,
   Tags,
   Smartphone,
   Package,
   Palette,
   Sparkles,
+  Images,
   Users,
   Settings,
   ChevronRight,
-  LogOut,
   Home,
 } from 'lucide-react';
 
 const navigation = [
   {
+    label: 'Overview',
+    items: [
+      { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
+    ],
+  },
+  {
     label: 'Orders',
     items: [
-      { name: 'Orders', key: 'orders', icon: ShoppingCart },
+      { name: 'Orders', href: '/admin/orders', icon: ShoppingCart },
+    ],
+  },
+  {
+    label: 'Production',
+    items: [
+      { name: 'Production Orders', href: '/admin/production-orders', icon: Factory },
+      { name: 'Print Queue', href: '/admin/print-queue', icon: Printer },
     ],
   },
   {
     label: 'Catalogue',
     items: [
-      { name: 'Brands', key: 'brands', icon: Tags },
-      { name: 'Models', key: 'models', icon: Smartphone },
-    ],
-  },
-  {
-    label: 'Product Types',
-    items: [
-      { name: 'Product Types', key: 'product-types', icon: Package },
+      { name: 'Brands', href: '/admin/brands', icon: Tags },
+      { name: 'Models', href: '/admin/models', icon: Smartphone },
+      { name: 'Product Types', href: '/admin/product-types', icon: Package },
     ],
   },
   {
     label: 'Cases',
     items: [
-      { name: 'Custom Designed Case', key: 'custom-case', icon: Palette },
-      { name: 'Predesigned Case', key: 'predesigned-case', icon: Sparkles },
+      { name: 'Custom Designed Case', href: '/admin/custom-case', icon: Palette },
+      { name: 'Predesigned Case', href: '/admin/predesigned-case', icon: Sparkles },
+      { name: 'Predesigned Catalogue', href: '/admin/predesigned', icon: Images },
     ],
   },
   {
     label: 'Users',
     items: [
-      { name: 'Users', key: 'users', icon: Users },
+      { name: 'Users', href: '/admin/users', icon: Users },
     ],
   },
   {
     label: 'Settings',
     items: [
-      { name: 'Payment', key: 'payment-settings', icon: Settings },
+      { name: 'Payment', href: '/admin/payment-settings', icon: Settings },
     ],
   },
 ];
 
 export interface AdminSidebarProps {
-  activeModule?: string;
-  onModuleChange?: (moduleKey: string) => void;
   isOpen?: boolean;
   onClose?: () => void;
   className?: string;
 }
 
 export function AdminSidebar({
-  activeModule = 'brands',
-  onModuleChange,
   isOpen = false,
   onClose,
   className,
 }: AdminSidebarProps) {
+  const pathname = usePathname();
+
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
@@ -83,18 +93,13 @@ export function AdminSidebar({
     return () => { document.body.style.overflow = ''; };
   }, [isOpen]);
 
-  const handleClick = (key: string) => {
-    onModuleChange?.(key);
-    onClose?.();
-  };
-
-  const isActive = (key: string) => activeModule === key;
+  const isActive = (href: string) => pathname === href;
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full bg-white">
       {/* Logo + Brand */}
       <div className="h-16 flex items-center justify-between px-5 border-b border-gray-100 shrink-0">
-        <Link href="/" className="flex items-center gap-2.5 group">
+        <Link href="/admin" className="flex items-center gap-2.5 group">
           <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-amber-500 rounded-lg flex items-center justify-center shadow-sm group-hover:shadow-md transition-shadow">
             <span className="text-white font-bold text-sm">S</span>
           </div>
@@ -128,27 +133,29 @@ export function AdminSidebar({
               <ul className="space-y-0.5">
                 {items.map((item) => {
                   const Icon = item.icon;
+                  const active = isActive(item.href);
                   return (
-                    <li key={item.key}>
-                      <button
-                        onClick={() => handleClick(item.key)}
-                        aria-current={isActive(item.key) ? 'page' : undefined}
+                    <li key={item.href}>
+                      <Link
+                        href={item.href}
+                        onClick={onClose}
+                        aria-current={active ? 'page' : undefined}
                         className={cn(
                           'flex items-center w-full gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-150',
-                          isActive(item.key)
+                          active
                             ? 'bg-gradient-to-r from-orange-50 to-amber-50 text-orange-700 shadow-sm border border-orange-200'
                             : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50 active:bg-gray-100',
                         )}
                       >
                         <Icon className={cn(
                           'w-4 h-4 shrink-0',
-                          isActive(item.key) ? 'text-orange-600' : 'text-gray-400',
+                          active ? 'text-orange-600' : 'text-gray-400',
                         )} />
                         <span className="flex-1 text-left">{item.name}</span>
-                        {isActive(item.key) && (
+                        {active && (
                           <ChevronRight className="w-3.5 h-3.5 text-orange-400" />
                         )}
-                      </button>
+                      </Link>
                     </li>
                   );
                 })}
