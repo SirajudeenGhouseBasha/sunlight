@@ -298,6 +298,64 @@ export function CartProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const addGuestItem = useCallback(
+    async (
+      variantId: string,
+      designId?: string,
+      quantity: number = 1,
+      customization?: Record<string, unknown>,
+      predesignedProductId?: string
+    ) => {
+      const signature = guestSignature({ variant_id: variantId, design_id: designId, predesigned_product_id: predesignedProductId, customization_options: customization });
+      const snapshot = await fetchGuestSnapshot({ variant_id: variantId, predesigned_product_id: predesignedProductId });
+
+      const current = loadGuestCart();
+      const existing = current.find((g) => guestSignature(g) === signature);
+      let next: GuestCartItem[];
+      if (existing) {
+        next = current.map((g) => g === existing ? { ...g, quantity: g.quantity + quantity } : g);
+      } else {
+        next = [...current, {
+          id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          variant_id: variantId || null,
+          design_id: designId ?? null,
+          predesigned_product_id: predesignedProductId ?? null,
+          quantity,
+          customization_options: customization ?? null,
+          name: snapshot.name,
+          image_url: snapshot.image_url,
+          unit_price: snapshot.unit_price,
+        }];
+      }
+      persistGuestCart(next);
+      setGuestItems(next);
+      loadGuestCartState();
+    },
+    [loadGuestCartState]
+  );
+
+  const updateGuestItem = useCallback(
+    (itemId: string, quantity: number) => {
+      const current = loadGuestCart();
+      const next = current.map((g) => g.id === itemId ? { ...g, quantity } : g);
+      persistGuestCart(next);
+      setGuestItems(next);
+      loadGuestCartState();
+    },
+    [loadGuestCartState]
+  );
+
+  const removeGuestItem = useCallback(
+    (itemId: string) => {
+      const current = loadGuestCart();
+      const next = current.filter((g) => g.id !== itemId);
+      persistGuestCart(next);
+      setGuestItems(next);
+      loadGuestCartState();
+    },
+    [loadGuestCartState]
+  );
+
   const refreshCart = useCallback(async () => {
     if (!authKnownRef.current) {
       // Auth not resolved yet — wait up to 1.5s for it, then fall back to guest cart
@@ -357,30 +415,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setError(null);
 
       if (!isLoggedIn) {
-        const signature = guestSignature({ variant_id: variantId, design_id: designId, predesigned_product_id: predesignedProductId, customization_options: customization });
-        const snapshot = await fetchGuestSnapshot({ variant_id: variantId, predesigned_product_id: predesignedProductId });
-
-        const current = loadGuestCart();
-        const existing = current.find((g) => guestSignature(g) === signature);
-        let next: GuestCartItem[];
-        if (existing) {
-          next = current.map((g) => g === existing ? { ...g, quantity: g.quantity + quantity } : g);
-        } else {
-          next = [...current, {
-            id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-            variant_id: variantId || null,
-            design_id: designId ?? null,
-            predesigned_product_id: predesignedProductId ?? null,
-            quantity,
-            customization_options: customization ?? null,
-            name: snapshot.name,
-            image_url: snapshot.image_url,
-            unit_price: snapshot.unit_price,
-          }];
-        }
-        persistGuestCart(next);
-        setGuestItems(next);
-        loadGuestCartState();
+        await addGuestItem(variantId, designId, quantity, customization, predesignedProductId);
         return;
       }
 
@@ -397,6 +432,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
           }),
         });
 
+        if (response.status === 401) {
+          // Session expired or invalid — never require login to add to cart.
+          // Fall back to the guest (localStorage) cart instead.
+          setIsLoggedIn(false);
+          await addGuestItem(variantId, designId, quantity, customization, predesignedProductId);
+          return;
+        }
+
         if (!response.ok) {
           const data = await response.json();
           throw new Error(data.error || 'Failed to add to cart');
@@ -408,7 +451,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         throw err;
       }
     },
-    [isLoggedIn, refreshCart, loadGuestCartState]
+    [isLoggedIn, addGuestItem, refreshCart]
   );
 
   const updateCartItem = useCallback(
@@ -416,11 +459,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setError(null);
 
       if (!isLoggedIn) {
-        const current = loadGuestCart();
-        const next = current.map((g) => g.id === itemId ? { ...g, quantity } : g);
-        persistGuestCart(next);
-        setGuestItems(next);
-        loadGuestCartState();
+        updateGuestItem(itemId, quantity);
         return;
       }
 
@@ -430,6 +469,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ quantity }),
         });
+
+        if (response.status === 401) {
+          setIsLoggedIn(false);
+          updateGuestItem(itemId, quantity);
+          return;
+        }
 
         if (!response.ok) {
           const data = await response.json();
@@ -442,7 +487,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         throw err;
       }
     },
-    [isLoggedIn, refreshCart, loadGuestCartState]
+    [isLoggedIn, updateGuestItem, refreshCart]
   );
 
   const removeFromCart = useCallback(
@@ -450,11 +495,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setError(null);
 
       if (!isLoggedIn) {
-        const current = loadGuestCart();
-        const next = current.filter((g) => g.id !== itemId);
-        persistGuestCart(next);
-        setGuestItems(next);
-        loadGuestCartState();
+        removeGuestItem(itemId);
         return;
       }
 
@@ -462,6 +503,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
         const response = await fetch(`/api/cart/${itemId}`, {
           method: 'DELETE',
         });
+
+        if (response.status === 401) {
+          setIsLoggedIn(false);
+          removeGuestItem(itemId);
+          return;
+        }
 
         if (!response.ok) {
           const data = await response.json();
@@ -474,7 +521,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         throw err;
       }
     },
-    [isLoggedIn, refreshCart, loadGuestCartState]
+    [isLoggedIn, removeGuestItem, refreshCart]
   );
 
   const clearCart = useCallback(async () => {
@@ -494,6 +541,18 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const response = await fetch('/api/cart', {
         method: 'DELETE',
       });
+
+      if (response.status === 401) {
+        // Session lost — treat as guest and clear the local cart
+        setIsLoggedIn(false);
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem(GUEST_CART_KEY);
+        }
+        setGuestItems([]);
+        setCartItems([]);
+        setSummary(null);
+        return;
+      }
 
       if (!response.ok) {
         const data = await response.json();

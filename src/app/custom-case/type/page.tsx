@@ -45,14 +45,24 @@ function TypeSelectionContent() {
   }, [modelId, router]);
 
   useEffect(() => {
+    if (!modelId) return;
     const fetchTypes = async () => {
       try {
-        const res = await fetch('/api/product-types?active=true');
-        const data = await res.json();
-        const filteredTypes = (data.product_types || []).filter(
+        const typesRes = await fetch('/api/product-types?active=true');
+        const typesData = await typesRes.json();
+        const candidates = (typesData.product_types || []).filter(
           (t: ProductType) => t.slug === 'clear' || t.slug === 'glass'
         );
-        setProductTypes(filteredTypes);
+        const results = await Promise.all(
+          candidates.map(async (t: ProductType) => {
+            const res = await fetch(
+              `/api/variants?model_id=${modelId}&product_type_id=${t.id}&limit=1`
+            );
+            const data = await res.json();
+            return { type: t, available: (data.variants || []).length > 0 };
+          })
+        );
+        setProductTypes(results.filter((r) => r.available).map((r) => r.type));
       } catch {
         setError('Failed to load case types');
       } finally {
@@ -60,7 +70,7 @@ function TypeSelectionContent() {
       }
     };
     fetchTypes();
-  }, []);
+  }, [modelId]);
 
   const handleTypeSelect = async (typeId: string) => {
     if (!modelId) return;
@@ -175,6 +185,14 @@ function TypeSelectionContent() {
                     </button>
                   ))}
                 </div>
+
+                {productTypes.length === 0 && !loading && (
+                  <div className="text-center py-8">
+                    <p className="text-sm text-gray-500">
+                      No cases are available for this model yet. Please choose a different device.
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
