@@ -407,11 +407,19 @@ export const useAuth = (): UseAuthReturn => {
   }, []);
 
   const isAuthenticated = !!user && !!session;
-  const isAdminUser = user?.user_metadata?.role === userRoles.ADMIN;
-  
+  // Role is stored in the public users table (source of truth for middleware
+  // and admin APIs). The auth user_metadata may not carry it (e.g. admins
+  // created before metadata syncing), so fall back to the loaded profile.
+  const isAdminUser =
+    user?.user_metadata?.role === userRoles.ADMIN ||
+    profile?.role === userRoles.ADMIN;
+
   const hasRole = useCallback((role: UserRole): boolean => {
-    return user?.user_metadata?.role === role;
-  }, [user?.user_metadata?.role]);
+    return (
+      user?.user_metadata?.role === role ||
+      profile?.role === role
+    );
+  }, [user?.user_metadata?.role, profile?.role]);
 
   return {
     // State
