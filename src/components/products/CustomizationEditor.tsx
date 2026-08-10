@@ -505,7 +505,7 @@ export function CustomizationEditor({
 
       const move = (ev: PointerEvent) => {
         const dxLogical = toLogical(ev.clientX - startClientX, scale) * dirX;
-        let newW = Math.max(MIN_SIZE, startW + dxLogical);
+        const newW = Math.max(MIN_SIZE, startW + dxLogical);
         let newH: number;
 
         if (lockAspect) {
