@@ -1,23 +1,28 @@
 /**
  * Customization Editor Component
  *
- * Uses react-rnd (Resizable and Draggable) to allow users to:
+ * Lets users:
  *   1. Upload a custom image overlay on the case mockup.
  *   2. Add editable text elements.
- *   3. Resize, drag and position elements within the canvas bounds.
+ *   3. Drag, resize (corner handles) and pinch-to-zoom elements within
+ *      the canvas.
  *
- * Mobile fix: react-rnd internally uses interact.js / mouse events.
- * For touch support we must set `enableUserSelectHack={false}` AND
- * ensure the outer container does NOT intercept touch scroll. We also
- * add CSS `touch-action: none` on the canvas wrapper via a <style> tag
- * so the browser does not scroll-cancel pointer events inside it.
+ * Rebuilt on native Pointer Events instead of react-rnd. Pointer Events
+ * fire for both mouse and touch through the same handlers, and each touch
+ * point carries its own pointerId — so a single element naturally supports
+ * one-finger drag AND two-finger pinch without the two gestures fighting
+ * each other, and without any react-rnd/interact.js touch-action hacks.
+ *
+ * All element geometry is stored in a fixed logical coordinate space
+ * (CANVAS_WIDTH × CANVAS_HEIGHT) and converted to on-screen pixels via
+ * `scale`, which is recomputed from the container's actual width. This
+ * keeps drag/resize/pinch math identical at any screen size.
  */
 
 'use client';
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Rnd } from 'react-rnd';
 import { Button } from '@/src/components/ui/button';
 import { Input } from '@/src/components/ui/input';
 import { Label } from '@/src/components/ui/label';
@@ -46,6 +51,7 @@ interface ImageElement {
   y: number;
   width: number;
   height: number;
+  aspect: number; // naturalW / naturalH — locked while resizing
   contrast?: number;
   brightness?: number;
   saturate?: number;
@@ -83,6 +89,8 @@ interface CustomizationEditorProps {
 
 const CANVAS_WIDTH = 340;
 const CANVAS_HEIGHT = 560;
+const MIN_SIZE = 24;
+const HANDLE_HIT_SIZE = 28; // display px, generous touch target
 
 /** Scale a value from logical canvas space to display space */
 const toDisplay = (v: number, scale: number) => v * scale;
@@ -97,6 +105,8 @@ const FONT_OPTIONS = [
   'Comic Sans MS, cursive',
 ];
 
+type Corner = 'topLeft' | 'topRight' | 'bottomLeft' | 'bottomRight';
+
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
@@ -110,10 +120,9 @@ export function CustomizationEditor({
   const router = useRouter();
   const { addToCart } = useCart();
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Responsive canvas scale — we keep the internal coordinate space fixed
-  // at 340×560 but visually scale the whole canvas on small screens.
   const [scale, setScale] = useState(1);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -125,8 +134,13 @@ export function CustomizationEditor({
       }
     };
     updateScale();
+    const ro = new ResizeObserver(updateScale);
+    if (containerRef.current) ro.observe(containerRef.current);
     window.addEventListener('resize', updateScale);
-    return () => window.removeEventListener('resize', updateScale);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', updateScale);
+    };
   }, []);
 
   const [elements, setElements] = useState<CanvasElement[]>([]);
@@ -138,6 +152,37 @@ export function CustomizationEditor({
   const [newFontFamily, setNewFontFamily] = useState(FONT_OPTIONS[0]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Active pointers per element, keyed by pointerId, in display px relative
+  // to the canvas. size 1 => drag. size >= 2 => pinch (uses first two ids).
+  const pointersRef = useRef<Map<string, Map<number, { x: number; y: number }>>>(new Map());
+  // Gesture snapshot taken when a drag/pinch begins, per element id.
+  const gestureRef = useRef<
+    Map<
+      string,
+      {
+        mode: 'drag' | 'pinch';
+        startX: number;
+        startY: number;
+        startW: number;
+        startH: number;
+        startClientX: number; // drag only, display px
+        startClientY: number;
+        startDist: number; // pinch only, display px
+        centerX: number; // pinch only, logical
+        centerY: number;
+      }
+    >
+  >(new Map());
+
+  const getPointers = (id: string) => {
+    let m = pointersRef.current.get(id);
+    if (!m) {
+      m = new Map();
+      pointersRef.current.set(id, m);
+    }
+    return m;
+  };
 
   // ---- helpers ----
 
@@ -157,40 +202,108 @@ export function CustomizationEditor({
   const removeElement = useCallback((id: string) => {
     setElements((prev) => prev.filter((el) => el.id !== id));
     setSelectedId(null);
+    pointersRef.current.delete(id);
+    gestureRef.current.delete(id);
   }, []);
+
+  const clampPos = (x: number, y: number, w: number, h: number) => {
+    // Allow a bit of overhang past the edges (natural for cover-fit crops)
+    // but keep at least a quarter of the element over the canvas.
+    const minX = -w * 0.75;
+    const minY = -h * 0.75;
+    const maxX = CANVAS_WIDTH - w * 0.25;
+    const maxY = CANVAS_HEIGHT - h * 0.25;
+    return {
+      x: Math.max(minX, Math.min(maxX, x)),
+      y: Math.max(minY, Math.min(maxY, y)),
+    };
+  };
 
   // ---- image upload ----
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    e.target.value = '';
 
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const src = ev.target?.result as string;
-      const img = new window.Image();
-      img.onload = () => {
+    if (!file.type.startsWith('image/')) {
+      setError('Please choose an image file (JPG, PNG, or WebP).');
+      return;
+    }
+
+    setError(null);
+    setUploading(true);
+
+    // Use an object URL instead of FileReader/readAsDataURL — base64 data
+    // URLs of phone camera photos are huge and some phones fail to decode
+    // them silently. The image is then normalized through a canvas (fixes
+    // EXIF rotation and caps the resolution) so it renders reliably on all
+    // devices, and compressed so it stays small in cart/order data.
+    const objectUrl = URL.createObjectURL(file);
+    const img = new window.Image();
+
+    img.onload = () => {
+      try {
+        const MAX_DIM = 1200;
+        const naturalW = img.naturalWidth || img.width;
+        const naturalH = img.naturalHeight || img.height;
+        if (!naturalW || !naturalH) {
+          throw new Error('Could not determine image dimensions');
+        }
+
+        let w = naturalW;
+        let h = naturalH;
+        if (w > MAX_DIM || h > MAX_DIM) {
+          const ratio = Math.min(MAX_DIM / w, MAX_DIM / h);
+          w = Math.round(w * ratio);
+          h = Math.round(h * ratio);
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          throw new Error('Canvas not supported');
+        }
+
+        ctx.drawImage(img, 0, 0, w, h);
+
+        // Keep PNG (transparency) as PNG, compress everything else to JPEG.
+        const mime = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
+        const src = canvas.toDataURL(mime, 0.85);
+
         const maxW = CANVAS_WIDTH * 0.6;
-        const ratio = img.width / img.height;
-        const w = Math.min(img.width, maxW);
-        const h = w / ratio;
+        const elW = Math.min(w, maxW);
+        const elH = elW * (h / w);
 
         const newEl: ImageElement = {
           type: 'image',
           id: genId(),
           src,
-          x: (CANVAS_WIDTH - w) / 2,
-          y: (CANVAS_HEIGHT - h) / 2,
-          width: w,
-          height: h,
+          x: (CANVAS_WIDTH - elW) / 2,
+          y: (CANVAS_HEIGHT - elH) / 2,
+          width: elW,
+          height: elH,
+          aspect: w / h,
         };
         setElements((prev) => [...prev, newEl]);
         setSelectedId(newEl.id);
-      };
-      img.src = src;
+      } catch {
+        setError('Could not process this image on your device. Please try a JPG or PNG photo.');
+      } finally {
+        URL.revokeObjectURL(objectUrl);
+        setUploading(false);
+      }
     };
-    reader.readAsDataURL(file);
-    e.target.value = '';
+
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      setUploading(false);
+      setError('Could not read this image on your device. Please try a JPG or PNG photo.');
+    };
+
+    img.src = objectUrl;
   };
 
   // ---- text add ----
@@ -218,7 +331,11 @@ export function CustomizationEditor({
   const handleClear = () => {
     setElements([]);
     setSelectedId(null);
+    pointersRef.current.clear();
+    gestureRef.current.clear();
   };
+
+  const selectedElement = elements.find((el) => el.id === selectedId);
 
   const handleTransform = () => {
     if (selectedElement?.type === 'image') {
@@ -246,17 +363,189 @@ export function CustomizationEditor({
     }
   };
 
-  const selectedElement = elements.find((el) => el.id === selectedId);
+  /* ------------------------------------------------------------------ */
+  /*  Drag + pinch, driven entirely by Pointer Events                    */
+  /* ------------------------------------------------------------------ */
 
-  // Scaled canvas visual dimensions
+  const onElementPointerDown = useCallback(
+    (el: CanvasElement) => (e: React.PointerEvent) => {
+      // Corner handles have their own handler and stop propagation before
+      // this ever fires, so anything reaching here is a body drag/pinch.
+      e.stopPropagation();
+      (e.currentTarget as Element).setPointerCapture(e.pointerId);
+      setSelectedId(el.id);
+
+      const pts = getPointers(el.id);
+      pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+      if (pts.size >= 2) {
+        const [p1, p2] = Array.from(pts.values()).slice(0, 2);
+        const dist = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+        gestureRef.current.set(el.id, {
+          mode: 'pinch',
+          startX: el.x,
+          startY: el.y,
+          startW: el.width,
+          startH: el.height,
+          startClientX: 0,
+          startClientY: 0,
+          startDist: dist,
+          centerX: el.x + el.width / 2,
+          centerY: el.y + el.height / 2,
+        });
+      } else {
+        gestureRef.current.set(el.id, {
+          mode: 'drag',
+          startX: el.x,
+          startY: el.y,
+          startW: el.width,
+          startH: el.height,
+          startClientX: e.clientX,
+          startClientY: e.clientY,
+          startDist: 0,
+          centerX: 0,
+          centerY: 0,
+        });
+      }
+    },
+    []
+  );
+
+  const onElementPointerMove = useCallback(
+    (el: CanvasElement) => (e: React.PointerEvent) => {
+      const pts = pointersRef.current.get(el.id);
+      const g = gestureRef.current.get(el.id);
+      if (!pts || !g || !pts.has(e.pointerId)) return;
+      pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+      if (g.mode === 'drag' && pts.size === 1) {
+        const dx = toLogical(e.clientX - g.startClientX, scale);
+        const dy = toLogical(e.clientY - g.startClientY, scale);
+        const pos = clampPos(g.startX + dx, g.startY + dy, el.width, el.height);
+        updateElement(el.id, { x: pos.x, y: pos.y });
+        return;
+      }
+
+      if (g.mode === 'pinch' && pts.size >= 2) {
+        const [p1, p2] = Array.from(pts.values()).slice(0, 2);
+        const dist = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+        if (g.startDist === 0) return;
+        const ratio = dist / g.startDist;
+        const aspect = el.type === 'image' ? el.aspect : g.startW / g.startH;
+        const newW = Math.max(MIN_SIZE, toLogical(toDisplay(g.startW, scale) * ratio, scale));
+        const newH = newW / aspect;
+        const pos = clampPos(g.centerX - newW / 2, g.centerY - newH / 2, newW, newH);
+        updateElement(el.id, { width: newW, height: newH, x: pos.x, y: pos.y });
+      }
+    },
+    [scale, updateElement]
+  );
+
+  const onElementPointerUp = useCallback(
+    (el: CanvasElement) => (e: React.PointerEvent) => {
+      const pts = pointersRef.current.get(el.id);
+      if (!pts) return;
+      pts.delete(e.pointerId);
+      try {
+        (e.currentTarget as Element).releasePointerCapture(e.pointerId);
+      } catch {
+        /* already released */
+      }
+
+      if (pts.size === 1) {
+        // Dropped from pinch to one finger — resume as a drag so the
+        // remaining finger keeps moving the element with no jump.
+        const [[, pos]] = Array.from(pts.entries());
+        gestureRef.current.set(el.id, {
+          mode: 'drag',
+          startX: el.x,
+          startY: el.y,
+          startW: el.width,
+          startH: el.height,
+          startClientX: pos.x,
+          startClientY: pos.y,
+          startDist: 0,
+          centerX: 0,
+          centerY: 0,
+        });
+      } else if (pts.size === 0) {
+        gestureRef.current.delete(el.id);
+      }
+    },
+    []
+  );
+
+  /* ------------------------------------------------------------------ */
+  /*  Corner-handle resize (precise, mouse or touch, no pinch needed)    */
+  /* ------------------------------------------------------------------ */
+
+  const startHandleDrag = useCallback(
+    (el: CanvasElement, corner: Corner) => (e: React.PointerEvent) => {
+      e.stopPropagation();
+      e.preventDefault();
+      const pointerId = e.pointerId;
+      (e.currentTarget as Element).setPointerCapture(pointerId);
+
+      const startClientX = e.clientX;
+      const startClientY = e.clientY;
+      const startW = el.width;
+      const startH = el.height;
+      const startX = el.x;
+      const startY = el.y;
+      const lockAspect = el.type === 'image';
+      const aspect = el.type === 'image' ? el.aspect : startW / startH;
+
+      // The opposite corner is the fixed anchor.
+      const anchor = {
+        x: corner.includes('Left') ? startX + startW : startX,
+        y: corner.includes('top') || corner === 'topLeft' || corner === 'topRight' ? startY + startH : startY,
+      };
+      const dirX = corner.includes('Left') ? -1 : 1;
+      const dirY = corner === 'topLeft' || corner === 'topRight' ? -1 : 1;
+
+      const move = (ev: PointerEvent) => {
+        const dxLogical = toLogical(ev.clientX - startClientX, scale) * dirX;
+        let newW = Math.max(MIN_SIZE, startW + dxLogical);
+        let newH: number;
+
+        if (lockAspect) {
+          newH = newW / aspect;
+        } else {
+          const dyLogical = toLogical(ev.clientY - startClientY, scale) * dirY;
+          newH = Math.max(MIN_SIZE, startH + dyLogical);
+        }
+
+        const newX = corner.includes('Left') ? anchor.x - newW : anchor.x;
+        const newY = (corner === 'topLeft' || corner === 'topRight') ? anchor.y - newH : anchor.y;
+        updateElement(el.id, { width: newW, height: newH, x: newX, y: newY });
+      };
+
+      const up = () => {
+        window.removeEventListener('pointermove', move);
+        window.removeEventListener('pointerup', up);
+      };
+
+      window.addEventListener('pointermove', move);
+      window.addEventListener('pointerup', up);
+    },
+    [scale, updateElement]
+  );
+
   const scaledW = CANVAS_WIDTH * scale;
   const scaledH = CANVAS_HEIGHT * scale;
+
+  const handleDefs: { corner: Corner; style: React.CSSProperties }[] = [
+    { corner: 'topLeft', style: { top: 0, left: 0, cursor: 'nwse-resize' } },
+    { corner: 'topRight', style: { top: 0, right: 0, cursor: 'nesw-resize' } },
+    { corner: 'bottomLeft', style: { bottom: 0, left: 0, cursor: 'nesw-resize' } },
+    { corner: 'bottomRight', style: { bottom: 0, right: 0, cursor: 'nwse-resize' } },
+  ];
 
   return (
     <>
       {/*
-        Global style: prevent the browser from stealing touch events inside
-        the canvas. Without this, scrolling the page intercepts the drag.
+        Prevent the browser from stealing touch events inside the canvas —
+        without this, scrolling the page intercepts drag/pinch.
       */}
       <style>{`
         #customization-canvas-wrapper {
@@ -277,7 +566,6 @@ export function CustomizationEditor({
             <h3 className="text-lg font-semibold text-gray-900 mb-3">{productName}</h3>
           )}
 
-          {/* Top Floating Action */}
           <div className="flex justify-center mb-4">
             <Button
               variant="ghost"
@@ -289,12 +577,6 @@ export function CustomizationEditor({
             </Button>
           </div>
 
-          {/*
-            Outer ref container: measures available width so we can compute
-            `scale`. The canvas renders at scaledW × scaledH — no CSS
-            transform is used, so react-rnd coordinate math stays correct
-            on all screen sizes including mobile touch.
-          */}
           <div ref={containerRef} className="w-full flex justify-center">
             <div
               id="customization-canvas-wrapper"
@@ -305,7 +587,6 @@ export function CustomizationEditor({
                 className="relative rounded-2xl overflow-hidden shadow-xl border-2 border-gray-200 bg-gray-100"
                 style={{ width: scaledW, height: scaledH }}
                 onPointerDown={(e) => {
-                  // Deselect when tapping the bare canvas (not an element)
                   if (e.target === e.currentTarget) {
                     setSelectedId(null);
                   }
@@ -336,95 +617,29 @@ export function CustomizationEditor({
                   />
                 )}
 
-                {/* Layer 2: Editable elements
-                    All positions/sizes are stored in logical (340×560) space
-                    and converted to display space via `scale` before passing
-                    to Rnd. Callbacks convert back to logical space so the
-                    stored values are always scale-independent.
-                */}
+                {/* Layer 2: Editable elements. Positions/sizes are stored in
+                    logical (340×560) space and converted to display space
+                    via `scale`. */}
                 {elements.map((el) => (
-                  <Rnd
+                  <div
                     key={el.id}
-                    size={{
+                    onPointerDown={onElementPointerDown(el)}
+                    onPointerMove={onElementPointerMove(el)}
+                    onPointerUp={onElementPointerUp(el)}
+                    onPointerCancel={onElementPointerUp(el)}
+                    className={
+                      'absolute ' +
+                      (selectedId === el.id ? 'ring-2 ring-orange-500 ring-offset-1' : '')
+                    }
+                    style={{
+                      left: toDisplay(el.x, scale),
+                      top: toDisplay(el.y, scale),
                       width: toDisplay(el.width, scale),
                       height: toDisplay(el.height, scale),
-                    }}
-                    position={{
-                      x: toDisplay(el.x, scale),
-                      y: toDisplay(el.y, scale),
-                    }}
-                    bounds="parent"
-                    lockAspectRatio={el.type === 'image'}
-                    enableUserSelectHack={false}
-                    cancel=""
-                    onPointerDown={(e: React.PointerEvent) => {
-                      e.stopPropagation();
-                      setSelectedId((prev) => (prev === el.id ? null : el.id));
-                    }}
-                    onDragStart={() => {
-                      setSelectedId(el.id);
-                    }}
-                    onDrag={(_e: unknown, d: { x: number; y: number }) => {
-                      updateElement(el.id, {
-                        x: toLogical(d.x, scale),
-                        y: toLogical(d.y, scale),
-                      });
-                    }}
-                    onDragStop={(_e: unknown, d: { x: number; y: number }) => {
-                      updateElement(el.id, {
-                        x: toLogical(d.x, scale),
-                        y: toLogical(d.y, scale),
-                      });
-                    }}
-                    onResize={(
-                      _e: unknown,
-                      _direction: unknown,
-                      ref: HTMLElement,
-                      _delta: unknown,
-                      position: { x: number; y: number }
-                    ) => {
-                      updateElement(el.id, {
-                        width: toLogical(parseFloat(ref.style.width), scale),
-                        height: toLogical(parseFloat(ref.style.height), scale),
-                        x: toLogical(position.x, scale),
-                        y: toLogical(position.y, scale),
-                      });
-                    }}
-                    onResizeStop={(
-                      _e: unknown,
-                      _direction: unknown,
-                      ref: HTMLElement,
-                      _delta: unknown,
-                      position: { x: number; y: number }
-                    ) => {
-                      updateElement(el.id, {
-                        width: toLogical(parseFloat(ref.style.width), scale),
-                        height: toLogical(parseFloat(ref.style.height), scale),
-                        x: toLogical(position.x, scale),
-                        y: toLogical(position.y, scale),
-                      });
-                    }}
-                    className={
-                      selectedId === el.id
-                        ? 'ring-2 ring-orange-500 ring-offset-1'
-                        : ''
-                    }
-                    enableResizing={selectedId === el.id}
-                    style={{
                       zIndex: selectedId === el.id ? 20 : 10,
                       touchAction: 'none',
                       cursor: 'move',
                     }}
-                    resizeHandleComponent={
-                      selectedId === el.id
-                        ? {
-                            bottomRight: <ResizeHandle />,
-                            bottomLeft: <ResizeHandle />,
-                            topRight: <ResizeHandle />,
-                            topLeft: <ResizeHandle />,
-                          }
-                        : {}
-                    }
                   >
                     {el.type === 'image' ? (
                       <img
@@ -435,29 +650,43 @@ export function CustomizationEditor({
                         style={{
                           filter: `contrast(${el.contrast ?? 100}%) brightness(${el.brightness ?? 100}%) saturate(${el.saturate ?? 100}%)`,
                           transform: el.flipX ? 'scaleX(-1)' : 'scaleX(1)',
-                          touchAction: 'none',
                         }}
                       />
                     ) : (
                       <div
                         className="w-full h-full flex items-center justify-center select-none"
                         style={{
-                          // Scale font size proportionally so text looks the
-                          // same relative to the canvas on all screen sizes.
                           fontSize: `${toDisplay(el.fontSize, scale)}px`,
                           color: el.color,
                           fontFamily: el.fontFamily,
                           textShadow: '0 1px 4px rgba(0,0,0,0.5)',
                           wordBreak: 'break-word',
                           lineHeight: 1.2,
-                          touchAction: 'none',
                           pointerEvents: 'none',
                         }}
                       >
                         {el.content}
                       </div>
                     )}
-                  </Rnd>
+
+                    {/* Corner resize handles — desktop mouse or precise touch */}
+                    {selectedId === el.id &&
+                      handleDefs.map(({ corner, style }) => (
+                        <div
+                          key={corner}
+                          onPointerDown={startHandleDrag(el, corner)}
+                          className="case-resize-handle absolute rounded-full bg-white border-4 border-orange-500 shadow-lg"
+                          style={{
+                            ...style,
+                            width: HANDLE_HIT_SIZE,
+                            height: HANDLE_HIT_SIZE,
+                            transform: 'translate(-50%, -50%)',
+                            touchAction: 'none',
+                            zIndex: 30,
+                          }}
+                        />
+                      ))}
+                  </div>
                 ))}
 
                 {/* Empty state hint */}
@@ -476,7 +705,9 @@ export function CustomizationEditor({
           {/* Bottom Floating Toolbar */}
           {selectedId && selectedElement && (
             <div className="mt-4 flex flex-col items-center gap-2 w-full">
-              {/* Size slider row */}
+              <p className="text-[11px] text-gray-400 font-medium">
+                Drag a corner to resize · pinch with two fingers on touch · drag to move
+              </p>
               <div className="bg-white rounded-xl shadow-lg border border-gray-100 px-4 py-2 flex items-center gap-3 w-full max-w-xs">
                 <ZoomIn className="w-4 h-4 text-gray-400 flex-shrink-0" />
                 <input
@@ -490,19 +721,19 @@ export function CustomizationEditor({
                     const pct = Number(e.target.value) / 100;
                     const newW = CANVAS_WIDTH * pct;
                     if (selectedElement.type === 'image') {
-                      // keep aspect ratio
-                      const ratio = selectedElement.width / selectedElement.height;
-                      const newH = newW / ratio;
+                      const newH = newW / selectedElement.aspect;
+                      const pos = clampPos(selectedElement.x, selectedElement.y, newW, newH);
                       updateElement(selectedElement.id, {
                         width: newW,
                         height: newH,
-                        x: Math.max(0, Math.min(CANVAS_WIDTH - newW, selectedElement.x)),
-                        y: Math.max(0, Math.min(CANVAS_HEIGHT - newH, selectedElement.y)),
+                        x: pos.x,
+                        y: pos.y,
                       });
                     } else {
+                      const pos = clampPos(selectedElement.x, selectedElement.y, newW, selectedElement.height);
                       updateElement(selectedElement.id, {
                         width: newW,
-                        x: Math.max(0, Math.min(CANVAS_WIDTH - newW, selectedElement.x)),
+                        x: pos.x,
                       });
                     }
                   }}
@@ -514,7 +745,6 @@ export function CustomizationEditor({
                 </span>
               </div>
 
-              {/* Action buttons row */}
               <div className="bg-white rounded-xl shadow-lg border border-gray-100 px-3 sm:px-6 py-3 flex flex-wrap gap-4 sm:gap-8 items-center justify-center z-50">
                 <ToolbarButton icon={<FlipHorizontal className="w-5 h-5" />} label="Transform" onClick={handleTransform} />
                 <ToolbarButton icon={<Maximize className="w-5 h-5" />} label="Position" onClick={handlePosition} />
@@ -534,15 +764,15 @@ export function CustomizationEditor({
         <div className="flex-1 min-w-[280px] space-y-4">
           <h3 className="text-lg font-bold text-gray-900">Design Tools</h3>
 
-          {/* Action buttons */}
           <div className="grid grid-cols-2 gap-3">
             <Button
               variant="outline"
               className="h-12 gap-2 border-dashed border-2"
               onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
             >
               <ImagePlus className="w-4 h-4" />
-              Upload Image
+              {uploading ? 'Processing...' : 'Upload Image'}
             </Button>
             <input
               ref={fileInputRef}
@@ -551,6 +781,8 @@ export function CustomizationEditor({
               className="hidden"
               onChange={handleImageUpload}
             />
+
+            {error && <p className="text-red-500 text-xs col-span-2 -mt-2">{error}</p>}
 
             <Button
               variant="outline"
@@ -583,7 +815,6 @@ export function CustomizationEditor({
             )}
           </div>
 
-          {/* Text creation panel */}
           {showTextPanel && (
             <div className="border rounded-xl p-4 space-y-3 bg-white shadow-sm">
               <div className="flex items-center justify-between">
@@ -660,7 +891,6 @@ export function CustomizationEditor({
             </div>
           )}
 
-          {/* Selected Image properties */}
           {selectedElement?.type === 'image' && (
             <div className="border rounded-xl p-4 space-y-4 bg-white shadow-sm">
               <h4 className="font-semibold text-gray-900">Image Adjustments</h4>
@@ -694,7 +924,6 @@ export function CustomizationEditor({
             </div>
           )}
 
-          {/* Selected text properties */}
           {selectedElement?.type === 'text' && (
             <div className="border rounded-xl p-4 space-y-3 bg-white shadow-sm">
               <h4 className="font-semibold text-gray-900">Edit Text</h4>
@@ -736,7 +965,6 @@ export function CustomizationEditor({
             </div>
           )}
 
-          {/* Layer list */}
           {elements.length > 0 && (
             <div className="border rounded-xl p-4 bg-white shadow-sm">
               <h4 className="font-semibold text-gray-900 mb-3">Layers ({elements.length})</h4>
@@ -776,7 +1004,6 @@ export function CustomizationEditor({
             </div>
           )}
 
-          {/* Purchase & Add to Cart Actions */}
           <div className="border rounded-xl p-4 bg-orange-50/50 border-orange-100 space-y-3">
             <h4 className="font-semibold text-gray-900 text-sm">Finish Your Design</h4>
             {error && <p className="text-red-500 text-xs">{error}</p>}
@@ -828,15 +1055,6 @@ export function CustomizationEditor({
 /* ------------------------------------------------------------------ */
 /*  Small reusable sub-components                                      */
 /* ------------------------------------------------------------------ */
-
-function ResizeHandle() {
-  return (
-    <div
-      style={{ touchAction: 'none' }}
-      className="w-8 h-8 bg-white border-4 border-orange-500 rounded-full shadow-lg -translate-x-1/2 -translate-y-1/2"
-    />
-  );
-}
 
 function ToolbarButton({
   icon,
