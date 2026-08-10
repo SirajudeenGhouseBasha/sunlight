@@ -126,6 +126,7 @@ export function CustomizationEditor({
 
   const [scale, setScale] = useState(1);
   const containerRef = useRef<HTMLDivElement>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const updateScale = () => {
@@ -142,6 +143,23 @@ export function CustomizationEditor({
       ro.disconnect();
       window.removeEventListener('resize', updateScale);
     };
+  }, []);
+
+  // Belt-and-braces scroll lock for the canvas. CSS `touch-action: none`
+  // (below) is enough on most browsers, but some Android WebViews/in-app
+  // browsers still let a page scroll start before that CSS is honored.
+  // A native, non-passive touchmove listener is the one technique that
+  // reliably blocks scroll everywhere, because `{ passive: false }` can
+  // only be set via addEventListener — React's synthetic onTouchMove is
+  // attached passively for scroll performance and can't stop it.
+  useEffect(() => {
+    const node = wrapperRef.current;
+    if (!node) return;
+    const blockScroll = (e: TouchEvent) => {
+      e.preventDefault();
+    };
+    node.addEventListener('touchmove', blockScroll, { passive: false });
+    return () => node.removeEventListener('touchmove', blockScroll);
   }, []);
 
   const [elements, setElements] = useState<CanvasElement[]>([]);
@@ -438,6 +456,7 @@ export function CustomizationEditor({
       // Corner handles have their own handler and stop propagation before
       // this ever fires, so anything reaching here is a body drag/pinch.
       e.stopPropagation();
+      if (e.cancelable) e.preventDefault();
       (e.currentTarget as Element).setPointerCapture(e.pointerId);
       setSelectedId(el.id);
 
@@ -482,6 +501,7 @@ export function CustomizationEditor({
       const pts = pointersRef.current.get(el.id);
       const g = gestureRef.current.get(el.id);
       if (!pts || !g || !pts.has(e.pointerId)) return;
+      if (e.cancelable) e.preventDefault();
       pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
       if (g.mode === 'drag' && pts.size === 1) {
@@ -614,14 +634,15 @@ export function CustomizationEditor({
         without this, scrolling the page intercepts drag/pinch.
       */}
       <style>{`
-        #customization-canvas-wrapper {
+        #customization-canvas-wrapper,
+        #customization-canvas-wrapper * {
           touch-action: none;
           -webkit-user-select: none;
           user-select: none;
         }
-        #customization-canvas-wrapper * {
-          -webkit-user-select: none;
-          user-select: none;
+        #customization-canvas-wrapper img {
+          -webkit-user-drag: none;
+          -webkit-touch-callout: none;
         }
       `}</style>
 
@@ -645,13 +666,14 @@ export function CustomizationEditor({
 
           <div ref={containerRef} className="w-full flex justify-center">
             <div
+              ref={wrapperRef}
               id="customization-canvas-wrapper"
               style={{ width: scaledW, height: scaledH }}
             >
               <div
                 id="customization-canvas"
                 className="relative rounded-2xl overflow-hidden shadow-xl border-2 border-gray-200 bg-gray-100"
-                style={{ width: scaledW, height: scaledH }}
+                style={{ width: scaledW, height: scaledH, touchAction: 'none' }}
                 onPointerDown={(e) => {
                   if (e.target === e.currentTarget) {
                     setSelectedId(null);
@@ -736,7 +758,10 @@ export function CustomizationEditor({
                           style={{
                             filter: `contrast(${el.contrast ?? 100}%) brightness(${el.brightness ?? 100}%) saturate(${el.saturate ?? 100}%)`,
                             transform: el.flipX ? 'scaleX(-1)' : 'scaleX(1)',
-                          }}
+                            touchAction: 'none',
+                            WebkitUserDrag: 'none',
+                            WebkitTouchCallout: 'none',
+                          } as React.CSSProperties}
                         />
                       )
                     ) : (
