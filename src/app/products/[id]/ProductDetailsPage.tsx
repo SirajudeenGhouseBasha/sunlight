@@ -132,7 +132,7 @@ async function ProductDetails({ id, isCustomizing }: { id: string; isCustomizing
           </div>
           <CustomizationEditorWrapper
             variantId={product.id}
-            caseImageUrl={toProxiedUrl(product.mockup_template_url || product.image_url)}
+            caseImageUrl={toProxiedUrl(product.image_url || product.mockup_template_url)}
             maskImageUrl={product.mask_image_url ? toProxiedUrl(product.mask_image_url) : undefined}
             productName={product.name}
           />

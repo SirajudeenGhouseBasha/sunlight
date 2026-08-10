@@ -42,6 +42,8 @@ export interface Model {
   brand_id: string;
   brand?: Brand;
   release_year?: number;
+  mockup_template_url?: string;
+  mockup_constraints?: any;
   created_at: string;
 }
 
@@ -50,6 +52,8 @@ interface ModelFormData {
   name: string;
   brand_id: string;
   release_year?: number;
+  mockup_template_url?: string;
+  mockup_constraints?: any;
 }
 
 /**
@@ -224,6 +228,8 @@ export function ModelsModule() {
           name: formData.name,
           brand_id: formData.brand_id,
           release_year: formData.release_year,
+          mockup_template_url: formData.mockup_template_url,
+          mockup_constraints: formData.mockup_constraints,
         };
 
         let result;
