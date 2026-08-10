@@ -56,6 +56,7 @@ interface ImageElement {
   brightness?: number;
   saturate?: number;
   flipX?: boolean;
+  broken?: boolean; // set if the browser fails to decode/render src
 }
 
 interface TextElement {
@@ -221,28 +222,67 @@ export function CustomizationEditor({
 
   // ---- image upload ----
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Some phones (mostly Android photo pickers) hand over HEIC/HEIF files
+  // with an empty or non-standard `type`. Most non-Safari browsers can't
+  // decode HEIC in <img>/<canvas> at all, which otherwise surfaces as a
+  // confusing generic failure — catch it explicitly with a clear message.
+  const isLikelyHeic = (file: File) => {
+    const type = file.type.toLowerCase();
+    const name = file.name.toLowerCase();
+    return type.includes('heic') || type.includes('heif') || /\.hei[cf]$/.test(name);
+  };
+
+  // Final encoded size cap (bytes, before base64). Large data URIs are the
+  // most common reason an uploaded image renders on some devices and not
+  // others: several mobile WebViews (in-app browsers especially) silently
+  // fail to paint an <img src="data:..."> once it gets too big, with no
+  // onerror firing. Re-encoding at a lower quality/size keeps this safely
+  // under those limits on every device, not just the ones we've tested.
+  const MAX_ENCODED_BYTES = 1.5 * 1024 * 1024;
+
+  const blobToDataURL = (blob: Blob): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(blob);
+    });
+
+  const canvasToBlob = (canvas: HTMLCanvasElement, mime: string, quality?: number): Promise<Blob | null> =>
+    new Promise((resolve) => canvas.toBlob(resolve, mime, quality));
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     e.target.value = '';
 
-    if (!file.type.startsWith('image/')) {
+    if (!file.type.startsWith('image/') && !isLikelyHeic(file)) {
       setError('Please choose an image file (JPG, PNG, or WebP).');
+      return;
+    }
+
+    if (isLikelyHeic(file)) {
+      setError('HEIC photos aren\u2019t supported on all devices yet. Please choose a JPG or PNG (in your Camera app, try "Share" \u2192 save as JPG, or change your camera format under Settings \u2192 Camera).');
       return;
     }
 
     setError(null);
     setUploading(true);
 
-    // Use an object URL instead of FileReader/readAsDataURL — base64 data
-    // URLs of phone camera photos are huge and some phones fail to decode
-    // them silently. The image is then normalized through a canvas (fixes
-    // EXIF rotation and caps the resolution) so it renders reliably on all
-    // devices, and compressed so it stays small in cart/order data.
+    // Use an object URL instead of FileReader/readAsDataURL for the initial
+    // read — base64 of a raw phone photo is huge and some phones fail to
+    // decode it silently. The image is normalized through a canvas (caps
+    // the resolution) and re-encoded through canvas.toBlob (async, so it
+    // doesn't block the main thread on low-power devices, unlike toDataURL).
     const objectUrl = URL.createObjectURL(file);
     const img = new window.Image();
 
-    img.onload = () => {
+    const cleanup = () => {
+      URL.revokeObjectURL(objectUrl);
+      setUploading(false);
+    };
+
+    img.onload = async () => {
       try {
         const MAX_DIM = 1200;
         const naturalW = img.naturalWidth || img.width;
@@ -266,12 +306,40 @@ export function CustomizationEditor({
         if (!ctx) {
           throw new Error('Canvas not supported');
         }
-
         ctx.drawImage(img, 0, 0, w, h);
 
-        // Keep PNG (transparency) as PNG, compress everything else to JPEG.
-        const mime = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
-        const src = canvas.toDataURL(mime, 0.85);
+        const isPng = file.type === 'image/png';
+        let mime = isPng ? 'image/png' : 'image/jpeg';
+        let blob = await canvasToBlob(canvas, mime, isPng ? undefined : 0.85);
+
+        // Re-encode smaller/lossier until it's under the size cap, so the
+        // final data URI stays reliably renderable everywhere. PNG has no
+        // quality knob, so if it's still too big we fall back to JPEG.
+        const qualitySteps = [0.6, 0.4];
+        for (const q of qualitySteps) {
+          if (!blob || blob.size <= MAX_ENCODED_BYTES) break;
+          if (isPng) {
+            mime = 'image/jpeg';
+          }
+          blob = await canvasToBlob(canvas, mime, q);
+        }
+        if (blob && blob.size > MAX_ENCODED_BYTES) {
+          // Last resort: shrink the canvas itself and re-encode once more.
+          const smallCanvas = document.createElement('canvas');
+          smallCanvas.width = Math.round(w * 0.6);
+          smallCanvas.height = Math.round(h * 0.6);
+          const sctx = smallCanvas.getContext('2d');
+          if (sctx) {
+            sctx.drawImage(canvas, 0, 0, smallCanvas.width, smallCanvas.height);
+            blob = await canvasToBlob(smallCanvas, 'image/jpeg', 0.5);
+          }
+        }
+
+        if (!blob) {
+          throw new Error('Could not encode image');
+        }
+
+        const src = await blobToDataURL(blob);
 
         const maxW = CANVAS_WIDTH * 0.6;
         const elW = Math.min(w, maxW);
@@ -292,14 +360,12 @@ export function CustomizationEditor({
       } catch {
         setError('Could not process this image on your device. Please try a JPG or PNG photo.');
       } finally {
-        URL.revokeObjectURL(objectUrl);
-        setUploading(false);
+        cleanup();
       }
     };
 
     img.onerror = () => {
-      URL.revokeObjectURL(objectUrl);
-      setUploading(false);
+      cleanup();
       setError('Could not read this image on your device. Please try a JPG or PNG photo.');
     };
 
@@ -642,16 +708,37 @@ export function CustomizationEditor({
                     }}
                   >
                     {el.type === 'image' ? (
-                      <img
-                        src={el.src}
-                        alt="Custom upload"
-                        className="w-full h-full object-contain pointer-events-none select-none"
-                        draggable={false}
-                        style={{
-                          filter: `contrast(${el.contrast ?? 100}%) brightness(${el.brightness ?? 100}%) saturate(${el.saturate ?? 100}%)`,
-                          transform: el.flipX ? 'scaleX(-1)' : 'scaleX(1)',
-                        }}
-                      />
+                      el.broken ? (
+                        // The browser failed to decode/render this image —
+                        // show that clearly instead of leaving blank space,
+                        // and let the person remove it and try again.
+                        <div className="w-full h-full flex flex-col items-center justify-center gap-1 bg-red-50 border border-red-200 rounded-sm p-2 pointer-events-auto">
+                          <p className="text-[11px] text-red-600 text-center font-medium leading-tight">
+                            Image couldn&apos;t load on this device
+                          </p>
+                          <button
+                            onClick={(ev) => {
+                              ev.stopPropagation();
+                              removeElement(el.id);
+                            }}
+                            className="text-[10px] text-red-500 underline"
+                          >
+                            Remove &amp; try again
+                          </button>
+                        </div>
+                      ) : (
+                        <img
+                          src={el.src}
+                          alt="Custom upload"
+                          className="w-full h-full object-contain pointer-events-none select-none"
+                          draggable={false}
+                          onError={() => updateElement(el.id, { broken: true })}
+                          style={{
+                            filter: `contrast(${el.contrast ?? 100}%) brightness(${el.brightness ?? 100}%) saturate(${el.saturate ?? 100}%)`,
+                            transform: el.flipX ? 'scaleX(-1)' : 'scaleX(1)',
+                          }}
+                        />
+                      )
                     ) : (
                       <div
                         className="w-full h-full flex items-center justify-center select-none"

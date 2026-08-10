@@ -659,7 +659,7 @@ export function HomePageClientAdvanced({
             >
               <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}><Palette size={40} strokeWidth={1.5} /></div>
               <h3 style={{ fontSize: 'clamp(18px, 5vw, 24px)', fontWeight: 700, marginBottom: 12, color: '#000' }}>
-                Design Custom
+                Design Your Case
               </h3>
               <p style={{ fontSize: 'clamp(12px, 3vw, 14px)', color: '#666', marginBottom: 24, lineHeight: 1.6 }}>
                 Create your own unique case. Upload photos, designs, or choose from 1000+ prints.
@@ -1185,7 +1185,7 @@ export function HomePageClientAdvanced({
             }}
           >
             {[
-              { title: 'PRODUCT', links: ['Shop', 'Custom Cases', 'Collections'] },
+              { title: 'PRODUCT', links: ['Shop', 'Design Your Case', 'Collections'] },
               { title: 'COMPANY', links: ['About', 'Blog', 'Careers'] },
               { title: 'LEGAL', links: ['Privacy', 'Terms', 'Returns'] },
               { title: 'CONNECT', links: ['Twitter', 'Instagram', 'Discord'] },

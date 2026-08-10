@@ -47,7 +47,7 @@ export function MainNav() {
 
   const navLinks = [
     { href: '/predesigned', label: 'Catalog', highlight: true },
-    { href: '/custom-case', label: 'Custom', highlight: true },
+    { href: '/custom-case', label: 'Design Your Case', highlight: true },
     { href: '/cart', label: 'Cart' },
     { href: '/orders', label: 'Orders' },
     { href: '/dashboard/designs', label: 'Designs', auth: true },
