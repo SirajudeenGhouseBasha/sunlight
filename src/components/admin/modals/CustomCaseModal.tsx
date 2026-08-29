@@ -10,20 +10,18 @@
 
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Modal } from '@/src/components/admin/shared/Modal';
 import { useToast } from '@/src/components/admin/shared/Toast';
+import { ImageField } from '@/src/components/admin/shared/ImageField';
 import { ProductTypeForm, type ProductType as ProductTypeFormType } from '@/src/components/admin/forms/ProductTypeForm';
 import type { CustomCaseVariant, Model } from '@/src/components/admin/modules/CustomCaseVariantModule';
-import { toProxiedUrl } from '@/src/utils/image-url';
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
 const HEX_REGEX = /^#[0-9A-Fa-f]{6}$/;
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
-const ALLOWED_MIME = ['image/jpeg', 'image/png'];
 
 // ---------------------------------------------------------------------------
 // Types
@@ -51,7 +49,7 @@ interface ProductType {
   created_at: string;
 }
 
-type FormErrors = Partial<Record<keyof FormData | 'case_image' | 'mask_image' | 'form', string>>;
+type FormErrors = Partial<Record<keyof FormData | 'form', string>>;
 
 export interface CustomCaseModalProps {
   isOpen: boolean;
@@ -80,7 +78,7 @@ function buildInitialForm(variant: CustomCaseVariant | null): FormData {
   };
 }
 
-function validateForm(data: FormData, caseImageFile: File | null, maskImageFile: File | null): FormErrors {
+function validateForm(data: FormData): FormErrors {
   const errors: FormErrors = {};
 
   if (!data.case_type) errors.case_type = 'Case type is required';
@@ -119,16 +117,6 @@ function validateForm(data: FormData, caseImageFile: File | null, maskImageFile:
     errors.stock_quantity = 'Stock quantity must be a whole number ≥ 0';
   }
 
-  if (caseImageFile) {
-    if (!ALLOWED_MIME.includes(caseImageFile.type)) errors.case_image = 'Only JPG/PNG files are allowed';
-    else if (caseImageFile.size > MAX_FILE_SIZE) errors.case_image = 'File must be smaller than 5 MB';
-  }
-
-  if (maskImageFile) {
-    if (!ALLOWED_MIME.includes(maskImageFile.type)) errors.mask_image = 'Only JPG/PNG files are allowed';
-    else if (maskImageFile.size > MAX_FILE_SIZE) errors.mask_image = 'File must be smaller than 5 MB';
-  }
-
   return errors;
 }
 
@@ -144,88 +132,6 @@ async function uploadImage(file: File): Promise<string> {
   }
   const json = await res.json();
   return json.url as string;
-}
-
-// ---------------------------------------------------------------------------
-// Sub-component: Image Upload Field
-// ---------------------------------------------------------------------------
-
-interface ImageUploadFieldProps {
-  id: string;
-  label: string;
-  accept?: string;
-  currentUrl?: string;
-  previewUrl: string | null;
-  error?: string;
-  onChange: (file: File, preview: string) => void;
-  onClear: () => void;
-}
-
-function ImageUploadField({
-  id,
-  label,
-  accept = 'image/jpeg,image/png',
-  currentUrl,
-  previewUrl,
-  error,
-  onChange,
-  onClear,
-}: ImageUploadFieldProps) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const displayUrl = previewUrl ?? (currentUrl ? toProxiedUrl(currentUrl) : null);
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const objectUrl = URL.createObjectURL(file);
-    onChange(file, objectUrl);
-    // Reset input so the same file can be re-selected after clearing
-    e.target.value = '';
-  };
-
-  return (
-    <div>
-      <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-1">
-        {label}
-      </label>
-      <div className="flex items-center gap-3">
-        <button
-          type="button"
-          onClick={() => inputRef.current?.click()}
-          className="px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white hover:bg-gray-50 transition-colors"
-        >
-          {displayUrl ? 'Replace' : 'Choose file'}
-        </button>
-        {displayUrl && (
-          <button
-            type="button"
-            onClick={onClear}
-            className="text-sm text-red-500 hover:text-red-700 transition-colors"
-          >
-            Remove
-          </button>
-        )}
-        <input
-          ref={inputRef}
-          id={id}
-          type="file"
-          accept={accept}
-          className="hidden"
-          onChange={handleFileChange}
-        />
-      </div>
-      {displayUrl && (
-        <div className="mt-2">
-          <img
-            src={displayUrl}
-            alt={`${label} preview`}
-            className="h-28 w-auto rounded border border-gray-200 object-cover bg-gray-50"
-          />
-        </div>
-      )}
-      {error && <p className="mt-1 text-sm text-red-500">{error}</p>}
-    </div>
-  );
 }
 
 // ---------------------------------------------------------------------------
@@ -252,10 +158,8 @@ export function CustomCaseModal({ isOpen, onClose, variant, onSaved }: CustomCas
   const [isSaving, setIsSaving] = useState(false);
 
   // ── Image state ────────────────────────────────────────────────────────────
-  const [caseImageFile, setCaseImageFile] = useState<File | null>(null);
-  const [caseImagePreview, setCaseImagePreview] = useState<string | null>(null);
-  const [maskImageFile, setMaskImageFile] = useState<File | null>(null);
-  const [maskImagePreview, setMaskImagePreview] = useState<string | null>(null);
+  const [imageUrl, setImageUrl] = useState<string>(variant?.image_url || '');
+  const [maskUrl, setMaskUrl] = useState<string>(variant?.mask_image_url || '');
 
   // ── Fetch models + product types on open ───────────────────────────────────
   useEffect(() => {
@@ -264,10 +168,8 @@ export function CustomCaseModal({ isOpen, onClose, variant, onSaved }: CustomCas
     // Reset form when modal opens
     setForm(buildInitialForm(variant));
     setErrors({});
-    setCaseImageFile(null);
-    setCaseImagePreview(null);
-    setMaskImageFile(null);
-    setMaskImagePreview(null);
+    setImageUrl(variant?.image_url || '');
+    setMaskUrl(variant?.mask_image_url || '');
 
     let cancelled = false;
 
@@ -328,32 +230,18 @@ export function CustomCaseModal({ isOpen, onClose, variant, onSaved }: CustomCas
     []
   );
 
-  const handleCaseImageChange = useCallback((file: File, preview: string) => {
-    setCaseImageFile(file);
-    setCaseImagePreview(preview);
-    setErrors(prev => { const n = { ...prev }; delete n.case_image; return n; });
+  const handleCaseImageChange = useCallback((url: string) => {
+    setImageUrl(url);
   }, []);
 
-  const handleMaskImageChange = useCallback((file: File, preview: string) => {
-    setMaskImageFile(file);
-    setMaskImagePreview(preview);
-    setErrors(prev => { const n = { ...prev }; delete n.mask_image; return n; });
-  }, []);
-
-  const handleCaseImageClear = useCallback(() => {
-    setCaseImageFile(null);
-    setCaseImagePreview(null);
-  }, []);
-
-  const handleMaskImageClear = useCallback(() => {
-    setMaskImageFile(null);
-    setMaskImagePreview(null);
+  const handleMaskImageChange = useCallback((url: string) => {
+    setMaskUrl(url);
   }, []);
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const validationErrors = validateForm(form, caseImageFile, maskImageFile);
+    const validationErrors = validateForm(form);
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
       return;
@@ -363,17 +251,6 @@ export function CustomCaseModal({ isOpen, onClose, variant, onSaved }: CustomCas
     setErrors({});
 
     try {
-      // Upload images if new files were selected
-      let imageUrl = variant?.image_url;
-      let maskUrl = variant?.mask_image_url;
-
-      if (caseImageFile) {
-        imageUrl = await uploadImage(caseImageFile);
-      }
-      if (maskImageFile) {
-        maskUrl = await uploadImage(maskImageFile);
-      }
-
       const payload = {
         case_type: form.case_type,
         model_id: form.model_id,
@@ -435,7 +312,7 @@ export function CustomCaseModal({ isOpen, onClose, variant, onSaved }: CustomCas
     } finally {
       setIsSaving(false);
     }
-  }, [form, caseImageFile, maskImageFile, variant, isEditMode, showToast, onSaved, onClose]);
+  }, [form, imageUrl, maskUrl, variant, isEditMode, showToast, onSaved, onClose]);
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -725,23 +602,21 @@ export function CustomCaseModal({ isOpen, onClose, variant, onSaved }: CustomCas
 
           {/* Row 4: Image uploads */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <ImageUploadField
+            <ImageField
               id="cc-case-image"
               label="Case Image (optional)"
-              currentUrl={variant?.image_url}
-              previewUrl={caseImagePreview}
-              error={errors.case_image}
+              value={imageUrl}
               onChange={handleCaseImageChange}
-              onClear={handleCaseImageClear}
+              onUpload={uploadImage}
+              helpText="Upload from your device or paste an image URL."
             />
-            <ImageUploadField
+            <ImageField
               id="cc-mask-image"
               label="Mask Image (optional)"
-              currentUrl={variant?.mask_image_url}
-              previewUrl={maskImagePreview}
-              error={errors.mask_image}
+              value={maskUrl}
               onChange={handleMaskImageChange}
-              onClear={handleMaskImageClear}
+              onUpload={uploadImage}
+              helpText="Upload from your device or paste an image URL."
             />
           </div>
 

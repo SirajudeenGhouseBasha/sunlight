@@ -11,6 +11,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Modal } from '@/src/components/admin/shared/Modal';
 import { useToast } from '@/src/components/admin/shared/Toast';
+import { ImageField } from '@/src/components/admin/shared/ImageField';
 import type { PredesignedCaseVariant } from '@/src/components/admin/modules/PredesignedCaseVariantModule';
 import { toProxiedUrl } from '@/src/utils/image-url';
 
@@ -78,12 +79,10 @@ function buildInitialForm(variant: PredesignedCaseVariant | null): FormData {
 
 function validateForm(
   data: FormData,
-  designImageFile: File | null,
-  variantImageFile: File | null,
+  designImageUrl: string,
+  variantImageUrl: string,
   additionalImageFiles: File[],
   isEditMode: boolean,
-  existingDesignUrl?: string,
-  existingVariantUrl?: string,
 ): FormErrors {
   const errors: FormErrors = {};
 
@@ -112,17 +111,8 @@ function validateForm(
     errors.display_order = 'Display order must be a whole number ≥ 0';
   }
 
-  if (!isEditMode && !designImageFile && !existingDesignUrl) errors.design_image = 'Design image is required';
-  if (designImageFile) {
-    if (!ALLOWED_MIME.includes(designImageFile.type)) errors.design_image = 'Only JPG/PNG files are allowed';
-    else if (designImageFile.size > MAX_FILE_SIZE) errors.design_image = 'File must be smaller than 5 MB';
-  }
-
-  if (!isEditMode && !variantImageFile && !existingVariantUrl) errors.variant_image = 'Variant image is required';
-  if (variantImageFile) {
-    if (!ALLOWED_MIME.includes(variantImageFile.type)) errors.variant_image = 'Only JPG/PNG files are allowed';
-    else if (variantImageFile.size > MAX_FILE_SIZE) errors.variant_image = 'File must be smaller than 5 MB';
-  }
+  if (!isEditMode && !designImageUrl) errors.design_image = 'Design image is required';
+  if (!isEditMode && !variantImageUrl) errors.variant_image = 'Variant image is required';
 
   for (const f of additionalImageFiles) {
     if (!ALLOWED_MIME.includes(f.type)) { errors.additional_images = 'Only JPG/PNG files are allowed'; break; }
@@ -145,59 +135,6 @@ async function uploadImage(file: File): Promise<string> {
 }
 
 // ---------------------------------------------------------------------------
-// Sub-component: Single Image Upload Field
-// ---------------------------------------------------------------------------
-
-interface ImageUploadFieldProps {
-  id: string;
-  label: string;
-  required?: boolean;
-  currentUrl?: string;
-  previewUrl: string | null;
-  error?: string;
-  onChange: (file: File, preview: string) => void;
-  onClear: () => void;
-}
-
-function ImageUploadField({ id, label, required, currentUrl, previewUrl, error, onChange, onClear }: ImageUploadFieldProps) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const displayUrl = previewUrl ?? (currentUrl ? toProxiedUrl(currentUrl) : null);
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    onChange(file, URL.createObjectURL(file));
-    e.target.value = '';
-  };
-
-  return (
-    <div>
-      <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-1">
-        {label}{required && <span className="text-red-500 ml-1">*</span>}
-      </label>
-      <div className="flex items-center gap-3">
-        <button type="button" onClick={() => inputRef.current?.click()}
-          className="px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white hover:bg-gray-50 transition-colors">
-          {displayUrl ? 'Replace' : 'Choose file'}
-        </button>
-        {displayUrl && (
-          <button type="button" onClick={onClear} className="text-sm text-red-500 hover:text-red-700 transition-colors">
-            Remove
-          </button>
-        )}
-        <input ref={inputRef} id={id} type="file" accept="image/jpeg,image/png" className="hidden" onChange={handleFileChange} />
-      </div>
-      {displayUrl && (
-        <div className="mt-2">
-          <img src={displayUrl} alt={`${label} preview`} className="h-28 w-auto rounded border border-gray-200 object-cover bg-gray-50" />
-        </div>
-      )}
-      {error && <p className="mt-1 text-sm text-red-500">{error}</p>}
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
 // Sub-component: Additional Images Upload Field
 // ---------------------------------------------------------------------------
 
@@ -207,11 +144,13 @@ interface AdditionalImagesFieldProps {
   images: AdditionalImage[];
   error?: string;
   onAdd: (files: File[]) => void;
+  onAddUrl: (url: string) => void;
   onRemove: (key: string) => void;
 }
 
-function AdditionalImagesField({ images, error, onAdd, onRemove }: AdditionalImagesFieldProps) {
+function AdditionalImagesField({ images, error, onAdd, onAddUrl, onRemove }: AdditionalImagesFieldProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const [urlValue, setUrlValue] = useState('');
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
@@ -219,21 +158,48 @@ function AdditionalImagesField({ images, error, onAdd, onRemove }: AdditionalIma
     e.target.value = '';
   };
 
+  const handleAddUrl = () => {
+    const trimmed = urlValue.trim();
+    if (!trimmed) return;
+    onAddUrl(trimmed);
+    setUrlValue('');
+  };
+
   return (
     <div>
       <label className="block text-sm font-medium text-gray-700 mb-1">
         Additional Images <span className="ml-1 text-xs text-gray-400">(optional)</span>
       </label>
-      <button type="button" onClick={() => inputRef.current?.click()}
-        className="px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white hover:bg-gray-50 transition-colors">
-        Add images
-      </button>
+      <div className="flex items-center gap-2">
+        <button type="button" onClick={() => inputRef.current?.click()}
+          className="px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white hover:bg-gray-50 transition-colors">
+          Upload from device
+        </button>
+        <div className="flex flex-1 items-center gap-2">
+          <input
+            type="text"
+            value={urlValue}
+            onChange={(e) => setUrlValue(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddUrl(); } }}
+            placeholder="Paste an image URL"
+            className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+          />
+          <button
+            type="button"
+            onClick={handleAddUrl}
+            disabled={!urlValue.trim()}
+            className="px-3 py-2 text-sm font-medium border border-gray-300 rounded-lg bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+          >
+            Add
+          </button>
+        </div>
+      </div>
       <input ref={inputRef} type="file" accept="image/jpeg,image/png" multiple className="hidden" onChange={handleFileChange} />
       {images.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-3">
           {images.map((img) => (
             <div key={img.key} className="relative group">
-              <img src={img.url} alt="Additional image preview" className="h-20 w-20 rounded border border-gray-200 object-cover bg-gray-50" />
+              <img src={toProxiedUrl(img.url)} alt="Additional image preview" className="h-20 w-20 rounded border border-gray-200 object-cover bg-gray-50" />
               <button type="button" onClick={() => onRemove(img.key)}
                 className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100"
                 aria-label="Remove image">×</button>
@@ -267,10 +233,8 @@ export function PredesignedCaseModal({ isOpen, onClose, variant, onSaved }: Pred
   const [isSaving, setIsSaving] = useState(false);
 
   // ── Image state ────────────────────────────────────────────────────────────
-  const [designImageFile, setDesignImageFile] = useState<File | null>(null);
-  const [designImagePreview, setDesignImagePreview] = useState<string | null>(null);
-  const [variantImageFile, setVariantImageFile] = useState<File | null>(null);
-  const [variantImagePreview, setVariantImagePreview] = useState<string | null>(null);
+  const [designImageUrl, setDesignImageUrl] = useState<string>((variant as any)?.design_image_url || '');
+  const [variantImageUrl, setVariantImageUrl] = useState<string>((variant as any)?.variant_image_url || '');
   const [additionalImages, setAdditionalImages] = useState<AdditionalImage[]>([]);
 
   // ── Filtered models for selected brand ────────────────────────────────────
@@ -285,10 +249,8 @@ export function PredesignedCaseModal({ isOpen, onClose, variant, onSaved }: Pred
 
     setForm(buildInitialForm(variant));
     setErrors({});
-    setDesignImageFile(null);
-    setDesignImagePreview(null);
-    setVariantImageFile(null);
-    setVariantImagePreview(null);
+    setDesignImageUrl((variant as any)?.design_image_url || '');
+    setVariantImageUrl((variant as any)?.variant_image_url || '');
 
     if (variant?.additional_image_urls && variant.additional_image_urls.length > 0) {
       setAdditionalImages(variant.additional_image_urls.map((url, i) => ({ key: `existing-${i}-${url}`, file: null, url })));
@@ -349,13 +311,13 @@ export function PredesignedCaseModal({ isOpen, onClose, variant, onSaved }: Pred
     setErrors(prev => { const n = { ...prev }; delete n.brand_id; delete n.model_id; return n; });
   }, []);
 
-  const handleDesignImageChange = useCallback((file: File, preview: string) => {
-    setDesignImageFile(file); setDesignImagePreview(preview);
+  const handleDesignImageChange = useCallback((url: string) => {
+    setDesignImageUrl(url);
     setErrors(prev => { const n = { ...prev }; delete n.design_image; return n; });
   }, []);
 
-  const handleVariantImageChange = useCallback((file: File, preview: string) => {
-    setVariantImageFile(file); setVariantImagePreview(preview);
+  const handleVariantImageChange = useCallback((url: string) => {
+    setVariantImageUrl(url);
     setErrors(prev => { const n = { ...prev }; delete n.variant_image; return n; });
   }, []);
 
@@ -368,13 +330,17 @@ export function PredesignedCaseModal({ isOpen, onClose, variant, onSaved }: Pred
     setAdditionalImages(prev => prev.filter(img => img.key !== key));
   }, []);
 
+  const handleAdditionalImageUrlAdd = useCallback((url: string) => {
+    setAdditionalImages(prev => [...prev, { key: `url-${Date.now()}-${url}`, file: null, url }]);
+    setErrors(prev => { const n = { ...prev }; delete n.additional_images; return n; });
+  }, []);
+
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
 
     const newAdditionalFiles = additionalImages.filter(img => img.file !== null).map(img => img.file!);
     const validationErrors = validateForm(
-      form, designImageFile, variantImageFile, newAdditionalFiles, isEditMode,
-      (variant as any)?.design_image_url, (variant as any)?.variant_image_url,
+      form, designImageUrl, variantImageUrl, newAdditionalFiles, isEditMode,
     );
     if (Object.keys(validationErrors).length > 0) { setErrors(validationErrors); return; }
 
@@ -382,11 +348,6 @@ export function PredesignedCaseModal({ isOpen, onClose, variant, onSaved }: Pred
     setErrors({});
 
     try {
-      let designImageUrl = (variant as any)?.design_image_url;
-      let variantImageUrl = (variant as any)?.variant_image_url;
-      if (designImageFile) designImageUrl = await uploadImage(designImageFile);
-      if (variantImageFile) variantImageUrl = await uploadImage(variantImageFile);
-
       const additionalUrls: string[] = [];
       for (const img of additionalImages) {
         additionalUrls.push(img.file ? await uploadImage(img.file) : img.url);
@@ -401,8 +362,8 @@ export function PredesignedCaseModal({ isOpen, onClose, variant, onSaved }: Pred
         display_order: parseInt(form.display_order, 10),
         is_featured: form.is_featured,
         is_active: form.is_active,
-        design_image_url: designImageUrl,
-        variant_image_url: variantImageUrl,
+        design_image_url: designImageUrl || undefined,
+        variant_image_url: variantImageUrl || undefined,
         additional_image_urls: additionalUrls.length > 0 ? additionalUrls : undefined,
       };
 
@@ -437,7 +398,7 @@ export function PredesignedCaseModal({ isOpen, onClose, variant, onSaved }: Pred
     } finally {
       setIsSaving(false);
     }
-  }, [form, designImageFile, variantImageFile, additionalImages, variant, isEditMode, showToast, onSaved, onClose]);
+  }, [form, designImageUrl, variantImageUrl, additionalImages, variant, isEditMode, showToast, onSaved, onClose]);
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -623,17 +584,31 @@ export function PredesignedCaseModal({ isOpen, onClose, variant, onSaved }: Pred
 
           {/* Design Image + Variant Image */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <ImageUploadField id="pc-design-image" label="Design Image" required={!isEditMode}
-              currentUrl={(variant as any)?.design_image_url} previewUrl={designImagePreview}
-              error={errors.design_image} onChange={handleDesignImageChange} onClear={() => { setDesignImageFile(null); setDesignImagePreview(null); }} />
-            <ImageUploadField id="pc-variant-image" label="Variant Image" required={!isEditMode}
-              currentUrl={(variant as any)?.variant_image_url} previewUrl={variantImagePreview}
-              error={errors.variant_image} onChange={handleVariantImageChange} onClear={() => { setVariantImageFile(null); setVariantImagePreview(null); }} />
+            <ImageField
+              id="pc-design-image"
+              label="Design Image"
+              required={!isEditMode}
+              value={designImageUrl}
+              onChange={handleDesignImageChange}
+              onUpload={uploadImage}
+              error={errors.design_image}
+              helpText="Upload from your device or paste an image URL."
+            />
+            <ImageField
+              id="pc-variant-image"
+              label="Variant Image"
+              required={!isEditMode}
+              value={variantImageUrl}
+              onChange={handleVariantImageChange}
+              onUpload={uploadImage}
+              error={errors.variant_image}
+              helpText="Upload from your device or paste an image URL."
+            />
           </div>
 
           {/* Additional Images */}
           <AdditionalImagesField images={additionalImages} error={errors.additional_images}
-            onAdd={handleAdditionalImagesAdd} onRemove={handleAdditionalImageRemove} />
+            onAdd={handleAdditionalImagesAdd} onAddUrl={handleAdditionalImageUrlAdd} onRemove={handleAdditionalImageRemove} />
 
           {/* Toggles */}
           <div className="flex flex-col sm:flex-row gap-4">

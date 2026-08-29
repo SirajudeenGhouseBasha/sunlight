@@ -1,9 +1,10 @@
 # Sunlight — Agent Instructions
 
+Single Next.js 15 app (phone-case e-commerce: catalog, custom design editor, cart/checkout, admin ERP). This file is at the repo root — run all commands here.
+
 ## Project structure
 
-- **One Next.js 15 app** inside `sunlight/` — all commands run from that directory.
-- Path alias `@/*` maps to `sunlight/` root, so `@/src/components/...` is correct (tsconfig + vitest both wired).
+- Path alias `@/*` maps to the repo root, so `@/src/components/...` is correct (tsconfig + vitest both wired).
 - App router in `src/app/`; shadcn/ui style `radix-nova` (`components.json`). Run `npx shadcn add <component>` to add new ones.
 
 ## Commands
@@ -22,7 +23,7 @@
 
 ## Auth — which file actually runs
 
-- The **only** live auth middleware is `sunlight/middleware.ts` (route protection, role checks, inactive-user redirect, session refresh). Edit this file.
+- The **only** live auth middleware is `middleware.ts` at the repo root (route protection, role checks, inactive-user redirect, session refresh). Edit this file.
 - `src/proxy.ts` is a **duplicate, dead implementation** — nothing imports it, and Next 15.5 runs `middleware.ts`, not `proxy.ts`. Changes there have no effect; prefer deleting it.
 - The route matchers in `middleware.ts` (`publicRoutes`, `protectedRoutes`, `adminRoutes`, dynamic-route regex) are **hardcoded in that file** — add/remove routes there, not elsewhere. `src/lib/auth/config.ts` is only consulted for `userRoles` and `authRoutes.defaultRedirect`.
 
@@ -48,5 +49,8 @@
 ## Env & infra
 
 - `.env.local` is present and required. Keys (see `.env.example`): Supabase `NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_ANON_KEY` + `SUPABASE_SECRET_KEY`/`SUPABASE_DB_PASSWORD`, AWS S3 creds (`AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_S3_BUCKET_NAME`, `NEXT_PUBLIC_S3_BUCKET_URL`), `NEXT_PUBLIC_SITE_URL`/`NEXT_PUBLIC_API_URL`, email `RESEND_API_KEY`/`EMAIL_FROM`.
-- **Order status emails** (Resend): `src/lib/email/service.ts` sends a notification on every status change (order placed → `PENDING_PAYMENT`, payment verified → `PAID`, shipped → `SHIPPED` with tracking number, delivered → `DELIVERED`) to the order's `customer_email`. Never throws; silently skips when `RESEND_API_KEY` is unset. New status transitions must call `sendOrderStatusEmail` (see `api/admin/orders/route.ts`, `api/orders/[id]/route.ts`, `lib/orders/order-creator.ts`).
+- **Order emails** (Resend) live in `src/lib/email/service.ts`. Two senders:
+  - `sendOrderStatusEmail` — customer notification on every status change (placed → `PENDING_PAYMENT`, payment verified → `PAID`, shipped → `SHIPPED` with tracking number, delivered → `DELIVERED`) to the order's `customer_email`. New status transitions must call it (see `api/admin/orders/route.ts`, `api/orders/[id]/route.ts`, `lib/orders/order-creator.ts`).
+  - `sendAdminOrderNotification` — new-order alert to all admin emails (order-creator only).
+  Both never throw; silently skip when `RESEND_API_KEY` is unset.
 - Database migrations: `supabase/migrations/`, timestamp-prefixed SQL. Local config: `supabase/config.toml` (API 54321, DB 54322, Studio 54323). The Supabase CLI is linked to the remote project (`supabase/.temp/linked-project.json`, ref `bimolyuiboouvqgviztb`). **Normal workflow: add `<timestamp>_name.sql` to `supabase/migrations/`, then run `npx supabase db push`** (set `SUPABASE_DB_PASSWORD` in env or it will prompt for the remote DB password). `supabase migration repair --status applied <version>` is used to adopt pre-existing schema; `supabase db reset` only affects a local stack. Check remote-vs-local state with `npx supabase migration list` (queries the remote DB, needs the password too).

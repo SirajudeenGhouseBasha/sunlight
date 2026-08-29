@@ -12,6 +12,7 @@ import { Button } from '@/src/components/ui/button';
 import { Input } from '@/src/components/ui/input';
 import { Textarea } from '@/src/components/ui/textarea';
 import { Label } from '@/src/components/ui/label';
+import { ImageField } from '@/src/components/admin/shared/ImageField';
 
 // Brand type
 export interface Brand {
@@ -86,6 +87,25 @@ export function BrandForm({ brand, onSave, onCancel }: BrandFormProps) {
     }
   };
 
+  const uploadLogo = async (file: File): Promise<string> => {
+    const uploadFormData = new FormData();
+    uploadFormData.append('file', file);
+    uploadFormData.append('bucket', 'brand-logos');
+
+    const response = await fetch('/api/upload', {
+      method: 'POST',
+      body: uploadFormData,
+    });
+
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      throw new Error(body.error ?? 'Failed to upload logo');
+    }
+
+    const data = await response.json();
+    return data.url as string;
+  };
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {/* Brand Name */}
@@ -106,19 +126,16 @@ export function BrandForm({ brand, onSave, onCancel }: BrandFormProps) {
         )}
       </div>
 
-      {/* Logo URL */}
-      <div>
-        <Label htmlFor="logo_url">
-          Logo URL
-        </Label>
-        <Input
-          id="logo_url"
-          type="text"
-          value={formData.logo_url}
-          onChange={(e) => handleChange('logo_url', e.target.value)}
-          placeholder="https://example.com/logo.png"
-        />
-      </div>
+      {/* Logo */}
+      <ImageField
+        id="logo_url"
+        label="Logo"
+        value={formData.logo_url || ''}
+        onChange={(url) => handleChange('logo_url', url)}
+        onUpload={uploadLogo}
+        placeholder="Paste a logo URL or upload from your device"
+        helpText="Upload a logo image or paste an image URL."
+      />
 
       {/* Description */}
       <div>

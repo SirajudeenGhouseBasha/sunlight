@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/ca
 import { Button } from '@/src/components/ui/button'
 import { Input } from '@/src/components/ui/input'
 import { Label } from '@/src/components/ui/label'
-import { Save, Loader2, Upload } from 'lucide-react'
+import { ImageField } from '@/src/components/admin/shared/ImageField'
+import { Save, Loader2 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 
 interface UpiConfig {
@@ -24,7 +25,6 @@ export function PaymentSettingsModule() {
   })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [qrUploading, setQrUploading] = useState(false)
 
   useEffect(() => {
     fetchConfig()
@@ -49,27 +49,19 @@ export function PaymentSettingsModule() {
     }
   }
 
-  const handleQrUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-
-    setQrUploading(true)
-    try {
-      const formData = new FormData()
-      formData.append('file', file)
-      const res = await fetch('/api/upload/qr-code', {
-        method: 'POST',
-        body: formData,
-      })
-      if (!res.ok) throw new Error('Upload failed')
-      const data = await res.json()
-      setConfig({ ...config, qr_code_url: data.url })
-      toast.success('QR code uploaded')
-    } catch {
-      toast.error('Failed to upload QR code')
-    } finally {
-      setQrUploading(false)
+  const uploadQrCode = async (file: File): Promise<string> => {
+    const formData = new FormData()
+    formData.append('file', file)
+    const res = await fetch('/api/upload/qr-code', {
+      method: 'POST',
+      body: formData,
+    })
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}))
+      throw new Error(body.error ?? 'Upload failed')
     }
+    const data = await res.json()
+    return data.url as string
   }
 
   const handleSave = async () => {
@@ -141,59 +133,18 @@ export function PaymentSettingsModule() {
           </div>
 
           <div>
-            <Label>QR Code Image (optional)</Label>
-            <div className="mt-1.5">
-              {config.qr_code_url ? (
-                <div className="flex flex-col items-center gap-3">
-                  <img
-                    src={config.qr_code_url}
-                    alt="UPI QR Code"
-                    className="w-40 h-40 object-contain rounded-xl border border-neutral-100"
-                  />
-                  <div className="flex gap-2">
-                    <label className="cursor-pointer inline-flex items-center gap-2 h-9 px-4 text-xs font-medium rounded-lg bg-neutral-100 text-neutral-700 hover:bg-neutral-200 transition-colors">
-                      <Upload className="w-3.5 h-3.5" />
-                      Change
-                      <input
-                        type="file"
-                        accept="image/jpeg,image/jpg,image/png,image/webp"
-                        className="hidden"
-                        onChange={handleQrUpload}
-                        disabled={qrUploading}
-                      />
-                    </label>
-                    <button
-                      onClick={() => setConfig({ ...config, qr_code_url: '' })}
-                      className="h-9 px-4 text-xs font-medium rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <label className="flex flex-col items-center justify-center h-32 rounded-xl border-2 border-dashed border-neutral-200 bg-neutral-50 cursor-pointer hover:bg-neutral-100 transition-colors">
-                  {qrUploading ? (
-                    <div className="flex items-center gap-2 text-sm text-neutral-500">
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Uploading...
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center gap-1.5">
-                      <Upload className="w-5 h-5 text-neutral-400" />
-                      <span className="text-sm text-neutral-500">Click to upload QR code</span>
-                      <span className="text-xs text-neutral-400">JPEG, PNG, WebP (max 5MB)</span>
-                    </div>
-                  )}
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/jpg,image/png,image/webp"
-                    className="hidden"
-                    onChange={handleQrUpload}
-                    disabled={qrUploading}
-                  />
-                </label>
-              )}
-            </div>
+            <ImageField
+              id="qr_code_url"
+              label="QR Code Image (optional)"
+              value={config.qr_code_url}
+              onChange={(url) => setConfig({ ...config, qr_code_url: url })}
+              onUpload={uploadQrCode}
+              accept="image/jpeg,image/jpg,image/png,image/webp"
+              maxSizeMB={5}
+              previewClassName="w-40 h-40 mx-auto"
+              placeholder="Paste a QR code image URL"
+              helpText="Upload a QR code image from your device or paste an image URL."
+            />
           </div>
 
           <Button onClick={handleSave} disabled={saving} className="w-full h-11">

@@ -10,3 +10,4 @@ export { Modal, type ModalProps } from './Modal';
 export { SearchBar, type SearchBarProps } from './SearchBar';
 export { EmptyState, type EmptyStateProps } from './EmptyState';
 export { LoadingState, type LoadingStateProps } from './LoadingState';
+export { ImageField, type ImageFieldProps } from './ImageField';
